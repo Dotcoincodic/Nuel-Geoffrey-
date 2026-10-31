@@ -1,0 +1,15 @@
+export const DEFAULT_SETTINGS = {
+  name: 'Artist Name',
+  headline: 'Paintings|that hold on|to light.',
+  location: 'Lagos, Nigeria',
+  email: 'hello@artistname.com',
+  bio: 'I paint large, textured canvases and make music in the same studio. Replace this with your own story, exhibitions and press.',
+  heroImage: '',
+  heroImages: [],
+  aboutImage: '',
+  shippingFee: 8000,
+  instagram: '#',
+  facebook: '#',
+  whatsapp: '#',
+  twitter: '#',
+}

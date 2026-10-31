@@ -1,0 +1,9 @@
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+@layer base {
+  html { scroll-behavior: smooth; }
+  body { @apply bg-paper text-neutral-900 font-sans antialiased transition-colors duration-300 dark:bg-night dark:text-neutral-100; }
+  :focus-visible { @apply outline outline-2 outline-offset-2 outline-primary; }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .animate-marquee { animation: none; } }
