@@ -8,6 +8,8 @@ import { isValidObjectId, Model } from 'mongoose'
 import { AdminGuard } from './auth'
 import { DEFAULT_SETTINGS } from './defaults'
 import { MailService } from './mail'
+import { ApiBearerAuth, ApiBody, ApiOperation, ApiProperty, ApiTags } from '@nestjs/swagger'
+import { ContentBodyPipe, MarkMessageDto, SettingsBodyPipe, VideoReactionDto } from './content-dto'
 
 const clean = (b: any) => {
   const { id, _id, createdAt, updatedAt, __v, ...rest } = b || {}
@@ -31,18 +33,24 @@ const withoutPicsumImages = (record: any) => {
 // Anyone can read. Only a signed-in admin can write.
 export function crud(path: string, modelName: string) {
   @Controller(path)
+  @ApiTags(`${modelName} content`)
   class CrudController {
     constructor(@InjectModel(modelName) private model: Model<any>) {}
-    @Get() async list() { return (await this.model.find().sort({ createdAt: 1 })).map(withoutPicsumImages) }
-    @UseGuards(AdminGuard) @Post() create(@Body() b: any) { return this.model.create(clean(b)) }
+    @Get() @ApiOperation({ summary: `List public ${modelName.toLowerCase()} records` })
+    async list() { return (await this.model.find().sort({ createdAt: 1 })).map(withoutPicsumImages) }
+    @UseGuards(AdminGuard) @ApiBearerAuth() @ApiBody({ schema: { type: 'object', additionalProperties: true } })
+    @Post() @ApiOperation({ summary: `Create a ${modelName.toLowerCase()} record (admin)` })
+    create(@Body(new ContentBodyPipe(modelName, true)) b: any) { return this.model.create(clean(b)) }
     @UseGuards(AdminGuard) @Put(':id')
-    async update(@Param('id') id: string, @Body() b: any) {
+    @ApiBearerAuth() @ApiBody({ schema: { type: 'object', additionalProperties: true } })
+    @ApiOperation({ summary: `Replace fields on a ${modelName.toLowerCase()} record (admin)` })
+    async update(@Param('id') id: string, @Body(new ContentBodyPipe(modelName, false)) b: any) {
       checkId(id)
       const doc = await this.model.findByIdAndUpdate(id, { $set: clean(b) }, { new: true })
       if (!doc) throw new NotFoundException()
       return doc
     }
-    @UseGuards(AdminGuard) @Delete(':id')
+    @UseGuards(AdminGuard) @ApiBearerAuth() @Delete(':id') @ApiOperation({ summary: `Delete a ${modelName.toLowerCase()} record (admin)` })
     async remove(@Param('id') id: string) {
       checkId(id)
       await this.model.findByIdAndDelete(id)
@@ -67,6 +75,7 @@ export class SettingsService {
 }
 
 @Controller()
+@ApiTags('public content and settings')
 export class PublicController {
   constructor(
     @InjectModel('Work') private works: Model<any>, @InjectModel('Track') private tracks: Model<any>,
@@ -76,6 +85,7 @@ export class PublicController {
 
   // Everything the public site needs, in one request.
   @Get('public')
+  @ApiOperation({ summary: 'Load all public content and site settings' })
   async all() {
     const [works, tracks, videos, posts, settings] = await Promise.all([
       this.works.find().sort({ createdAt: 1 }), this.tracks.find().sort({ createdAt: 1 }),
@@ -87,17 +97,20 @@ export class PublicController {
     }
   }
 
-  @Get('settings') getSettings() { return this.settings.get() }
-  @UseGuards(AdminGuard) @Put('settings') saveSettings(@Body() b: any) { return this.settings.save(b) }
+  @Get('settings') @ApiOperation({ summary: 'Read public site settings' }) getSettings() { return this.settings.get() }
+  @UseGuards(AdminGuard) @ApiBearerAuth() @ApiBody({ schema: { type: 'object', additionalProperties: true } })
+  @Put('settings') @ApiOperation({ summary: 'Update site settings (admin)' }) saveSettings(@Body(new SettingsBodyPipe()) b: any) { return this.settings.save(b) }
 }
 
 @Controller('videos')
+@ApiTags('video reactions')
 export class VideoReactionsController {
   constructor(@InjectModel('Video') private videos: Model<any>) {}
 
   @Throttle({ default: { limit: 30, ttl: 60000 } })
   @Post(':id/react')
-  async react(@Param('id') id: string, @Body() b: { kind: string; delta: number }) {
+  @ApiOperation({ summary: 'Increment or decrement a video like/love reaction' })
+  async react(@Param('id') id: string, @Body() b: VideoReactionDto) {
     checkId(id)
     if (!['likes', 'loves'].includes(b?.kind) || ![1, -1].includes(b?.delta)) throw new BadRequestException()
     const v = await this.videos.findByIdAndUpdate(id, { $inc: { [b.kind]: b.delta } }, { new: true })
@@ -108,32 +121,40 @@ export class VideoReactionsController {
 }
 
 export class CreateMessageDto {
+  @ApiProperty({ enum: ['contact', 'comment'] })
   @IsIn(['contact', 'comment']) type: 'contact' | 'comment'
+  @ApiProperty({ maxLength: 100 })
   @IsString() @MinLength(1) @MaxLength(100) name: string
+  @ApiProperty({ required: false })
   @IsOptional() @IsEmail() email?: string
+  @ApiProperty({ maxLength: 3000 })
   @IsString() @MinLength(1) @MaxLength(3000) message: string
+  @ApiProperty({ required: false })
   @IsOptional() @IsString() @MaxLength(60) videoId?: string
+  @ApiProperty({ required: false })
   @IsOptional() @IsString() @MaxLength(200) videoTitle?: string
 }
 
 @Controller('messages')
+@ApiTags('messages')
 export class MessagesController {
   constructor(@InjectModel('Message') private model: Model<any>, private mail: MailService) {}
 
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post()
+  @ApiOperation({ summary: 'Submit a contact message or video comment' })
   async create(@Body() dto: CreateMessageDto) {
     const m = await this.model.create({ ...dto, read: false })
     this.mail.newMessage(m.toJSON())
     return { ok: true }
   }
-  @UseGuards(AdminGuard) @Get() list() { return this.model.find().sort({ createdAt: -1 }) }
-  @UseGuards(AdminGuard) @Patch(':id')
-  async mark(@Param('id') id: string, @Body() b: { read: boolean }) {
+  @UseGuards(AdminGuard) @ApiBearerAuth() @Get() @ApiOperation({ summary: 'List messages (admin)' }) list() { return this.model.find().sort({ createdAt: -1 }) }
+  @UseGuards(AdminGuard) @ApiBearerAuth() @Patch(':id') @ApiOperation({ summary: 'Update message read state (admin)' })
+  async mark(@Param('id') id: string, @Body() b: MarkMessageDto) {
     checkId(id)
     return this.model.findByIdAndUpdate(id, { $set: { read: Boolean(b?.read) } }, { new: true })
   }
-  @UseGuards(AdminGuard) @Delete(':id')
+  @UseGuards(AdminGuard) @ApiBearerAuth() @Delete(':id') @ApiOperation({ summary: 'Delete a message (admin)' })
   async remove(@Param('id') id: string) {
     checkId(id)
     await this.model.findByIdAndDelete(id)

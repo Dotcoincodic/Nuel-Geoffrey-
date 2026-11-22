@@ -20,5 +20,5 @@ export const SCHEMAS = [
   { name: 'Setting', schema: loose() },
   { name: 'Message', schema: loose() },
   { name: 'Order', schema: new Schema({ ref: { type: String, unique: true, index: true } }, { strict: false, timestamps: true, toJSON }) },
-  { name: 'User', schema: new Schema({ email: { type: String, unique: true, lowercase: true }, passwordHash: String }, { timestamps: true, toJSON }) },
+  { name: 'User', schema: new Schema({ email: { type: String, unique: true, lowercase: true }, passwordHash: String, tokenVersion: { type: Number, default: 0 }, role: { type: String, default: 'admin' } }, { timestamps: true, toJSON }) },
 ]

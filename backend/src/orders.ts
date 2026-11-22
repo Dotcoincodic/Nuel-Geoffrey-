@@ -14,24 +14,36 @@ import { isValidObjectId, Model } from 'mongoose'
 import { AdminGuard } from './auth'
 import { SettingsService } from './content'
 import { MailService } from './mail'
+import { ApiBearerAuth, ApiOperation, ApiProperty, ApiTags } from '@nestjs/swagger'
 
 class OrderItemDto {
+  @ApiProperty({ example: '66e2a0000000000000000000' })
   @IsString() workId: string
+  @ApiProperty({ enum: ['Original', 'Print'] })
   @IsIn(['Original', 'Print']) option: 'Original' | 'Print'
+  @ApiProperty({ required: false, minimum: 1, maximum: 20 })
   @IsOptional() @IsInt() @Min(1) @Max(20) qty?: number
 }
 class CustomerDto {
+  @ApiProperty()
   @IsString() @MaxLength(100) name: string
+  @ApiProperty()
   @IsEmail() email: string
+  @ApiProperty()
   @IsString() @MaxLength(30) phone: string
+  @ApiProperty()
   @IsString() @MaxLength(500) address: string
+  @ApiProperty({ required: false })
   @IsOptional() @IsString() @MaxLength(1000) note?: string
 }
 export class CreateOrderDto {
+  @ApiProperty({ type: CustomerDto })
   @ValidateNested() @Type(() => CustomerDto) customer: CustomerDto
+  @ApiProperty({ type: [OrderItemDto], minItems: 1, maxItems: 30 })
   @IsArray() @ArrayMinSize(1) @ArrayMaxSize(30) @ValidateNested({ each: true }) @Type(() => OrderItemDto) items: OrderItemDto[]
 }
 class UpdateOrderDto {
+  @ApiProperty({ enum: ['pending', 'paid', 'shipped', 'delivered', 'cancelled'] })
   @IsIn(['pending', 'paid', 'shipped', 'delivered', 'cancelled']) status: string
 }
 
@@ -69,31 +81,45 @@ export class OrdersService {
       if (!work) throw new BadRequestException('An item in your cart no longer exists')
       if (w.option === 'Original') {
         if (work.get('status') !== 'available') throw new BadRequestException(`"${work.get('title')}" is no longer available`)
-        return { workId: w.workId, title: work.get('title'), option: w.option, qty: 1, price: Number(work.get('price')) }
+        const price = Number(work.get('price'))
+        if (!Number.isSafeInteger(price) || price <= 0) throw new BadRequestException(`"${work.get('title')}" has an invalid original price`)
+        return { workId: w.workId, title: work.get('title'), option: w.option, qty: 1, price }
       }
       const price = Number(work.get('printPrice') || 0)
-      if (!price) throw new BadRequestException(`Prints of "${work.get('title')}" are not available`)
+      if (!Number.isSafeInteger(price) || price <= 0) throw new BadRequestException(`Prints of "${work.get('title')}" are not available`)
       return { workId: w.workId, title: work.get('title'), option: w.option, qty: w.qty, price }
     })
 
+    const settings = await this.settings.get()
     // Reserve each original one at a time. If another buyer got there first, undo and refuse.
     const reserved: string[] = []
-    for (const it of items.filter((i) => i.option === 'Original')) {
-      const got = await this.works.findOneAndUpdate({ _id: it.workId, status: 'available' }, { $set: { status: 'reserved' } })
-      if (!got) {
-        if (reserved.length) await this.works.updateMany({ _id: { $in: reserved } }, { $set: { status: 'available' } })
-        throw new BadRequestException(`"${it.title}" was just taken by another buyer`)
+    try {
+      for (const it of items.filter((i) => i.option === 'Original')) {
+        const got = await this.works.findOneAndUpdate({ _id: it.workId, status: 'available' }, { $set: { status: 'reserved' } })
+        if (!got) throw new BadRequestException(`"${it.title}" was just taken by another buyer`)
+        reserved.push(it.workId)
       }
-      reserved.push(it.workId)
+    } catch (e) {
+      if (reserved.length) await this.works.updateMany({ _id: { $in: reserved } }, { $set: { status: 'available' } })
+      throw e
     }
 
-    const settings = await this.settings.get()
     const subtotal = items.reduce((n, i) => n + i.price * i.qty, 0)
     const shipping = Number(settings.shippingFee || 0)
+    if (!Number.isSafeInteger(subtotal) || !Number.isSafeInteger(shipping) || shipping < 0 || !Number.isSafeInteger((subtotal + shipping) * 100)) {
+      if (reserved.length) await this.works.updateMany({ _id: { $in: reserved } }, { $set: { status: 'available' } })
+      throw new BadRequestException('The order total is invalid. Please contact the studio.')
+    }
     const ref = 'ART-' + randomBytes(5).toString('hex').toUpperCase()
-    const order = await this.orders.create({
-      ref, items, customer: dto.customer, subtotal, shipping, total: subtotal + shipping, status: 'pending', paid: false,
-    })
+    let order: any
+    try {
+      order = await this.orders.create({
+        ref, items, customer: dto.customer, subtotal, shipping, total: subtotal + shipping, status: 'pending', paid: false,
+      })
+    } catch (e) {
+      if (reserved.length) await this.works.updateMany({ _id: { $in: reserved } }, { $set: { status: 'available' } })
+      throw e
+    }
 
     let authorizationUrl: string = null
     if (secret()) {
@@ -119,6 +145,7 @@ export class OrdersService {
         email: order.customer.email, amount: order.total * 100, currency: 'NGN', reference: order.ref,
         callback_url: `${base}/?order=${order.ref}`, metadata: { orderId: order.id },
       }),
+      signal: AbortSignal.timeout(10000),
     })
     const json: any = await res.json().catch(() => ({}))
     if (!res.ok || !json.status) {
@@ -132,6 +159,10 @@ export class OrdersService {
   async confirmPayment(ref: string, amountKobo: number, currency: string) {
     const order = await this.orders.findOne({ ref })
     if (!order || order.get('paid')) return order
+    if (order.get('status') === 'cancelled') {
+      this.log.error(`Payment arrived for cancelled order ${ref}; manual review or refund is required`)
+      return order
+    }
     if (amountKobo !== order.get('total') * 100 || currency !== 'NGN') {
       this.log.error(`Amount mismatch on ${ref}: paid ${amountKobo} ${currency}, expected ${order.get('total') * 100} NGN`)
       return order
@@ -149,10 +180,12 @@ export class OrdersService {
     let order = await this.orders.findOne({ ref })
     if (!order) throw new NotFoundException('Order not found')
     if (!order.get('paid') && secret()) {
-      const res = await fetch(`${PAYSTACK}/transaction/verify/${encodeURIComponent(ref)}`, { headers: { Authorization: `Bearer ${secret()}` } })
-      const json: any = await res.json().catch(() => ({}))
-      if (res.ok && json.status && json.data?.status === 'success') {
-        order = await this.confirmPayment(ref, json.data.amount, json.data.currency)
+      try {
+        const res = await fetch(`${PAYSTACK}/transaction/verify/${encodeURIComponent(ref)}`, { headers: { Authorization: `Bearer ${secret()}` }, signal: AbortSignal.timeout(10000) })
+        const json: any = await res.json().catch(() => ({}))
+        if (res.ok && json.status && json.data?.status === 'success') order = await this.confirmPayment(ref, json.data.amount, json.data.currency)
+      } catch {
+        this.log.warn(`Paystack verification was unavailable for ${ref}`)
       }
     }
     // Only non-personal fields go back to the browser.
@@ -165,31 +198,46 @@ export class OrdersService {
     if (!isValidObjectId(id)) throw new BadRequestException('Invalid id')
     const order = await this.orders.findById(id)
     if (!order) throw new NotFoundException()
-    const workStatus = { paid: 'sold', shipped: 'sold', delivered: 'sold', cancelled: 'available', pending: 'reserved' }[status]
+    const current = order.get('status')
+    if (status === current) return order
+    const allowed: Record<string, string[]> = {
+      pending: ['paid', 'cancelled'],
+      paid: ['shipped', 'delivered', 'cancelled'],
+      shipped: ['delivered', 'cancelled'],
+      delivered: [],
+      cancelled: [],
+    }
+    if (!allowed[current]?.includes(status)) throw new BadRequestException(`Cannot change an order from ${current} to ${status}`)
+    const wasPaid = Boolean(order.get('paid'))
+    const workStatus = status === 'cancelled' ? (wasPaid ? 'sold' : 'available') : 'sold'
     await this.setOriginals(order, workStatus)
-    order.set({ status, paid: ['paid', 'shipped', 'delivered'].includes(status) })
+    order.set({ status, paid: wasPaid || ['paid', 'shipped', 'delivered'].includes(status) })
     await order.save()
     return order
   }
 }
 
 @Controller()
+@ApiTags('orders and payments')
 export class OrdersController {
   private log = new Logger('Webhook')
   constructor(private orders: OrdersService) {}
 
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post('orders')
+  @ApiOperation({ summary: 'Create a checkout order using current database prices' })
   create(@Body() dto: CreateOrderDto) { return this.orders.create(dto) }
 
-  @Get('orders/verify/:ref') verify(@Param('ref') ref: string) { return this.orders.verify(ref) }
-  @UseGuards(AdminGuard) @Get('orders') list() { return this.orders.list() }
-  @UseGuards(AdminGuard) @Patch('orders/:id') setStatus(@Param('id') id: string, @Body() dto: UpdateOrderDto) { return this.orders.setStatus(id, dto.status) }
+  @Get('orders/verify/:ref') @ApiOperation({ summary: 'Verify order payment and return public status' })
+  verify(@Param('ref') ref: string) { return this.orders.verify(ref) }
+  @UseGuards(AdminGuard) @ApiBearerAuth() @Get('orders') @ApiOperation({ summary: 'List orders (admin)' }) list() { return this.orders.list() }
+  @UseGuards(AdminGuard) @ApiBearerAuth() @Patch('orders/:id') @ApiOperation({ summary: 'Set order status (admin)' }) setStatus(@Param('id') id: string, @Body() dto: UpdateOrderDto) { return this.orders.setStatus(id, dto.status) }
 
   // Paystack signs the exact bytes it sends with your secret key (HMAC SHA512). We check that before trusting anything.
   @SkipThrottle()
   @HttpCode(200)
   @Post('payments/webhook')
+  @ApiOperation({ summary: 'Receive a Paystack-signed payment webhook' })
   async webhook(@Req() req: RawBodyRequest<Request>, @Headers('x-paystack-signature') signature: string) {
     if (!secret() || !signature || !req.rawBody) throw new UnauthorizedException()
     const expected = createHmac('sha512', secret()).update(req.rawBody).digest('hex')

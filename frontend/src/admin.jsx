@@ -72,7 +72,7 @@ function Login() {
 }
 
 function PasswordAdmin() {
-  const { changePassword } = useStore()
+  const { changePassword, logout } = useStore()
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -95,6 +95,7 @@ function PasswordAdmin() {
       setNewPassword('')
       setConfirmPassword('')
       setSaved(true)
+      window.setTimeout(logout, 900)
     } catch (x) {
       setErr(x.message)
     } finally {
@@ -118,7 +119,7 @@ function PasswordAdmin() {
         <input type="password" autoComplete="new-password" required minLength={10} maxLength={200} className={input} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
       </Field>
       {err && <p role="alert" className="text-sm text-red-600">{err}</p>}
-      {saved && <p role="status" className="text-sm text-green-700 dark:text-green-400">Password changed. Use the new password the next time you sign in.</p>}
+      {saved && <p role="status" className="text-sm text-green-700 dark:text-green-400">Password changed. You will be signed out; use the new password to sign in.</p>}
       <button disabled={busy} className={`${btn} disabled:opacity-60`}>{busy ? 'Changing password…' : 'Change password'}</button>
     </form>
   )
@@ -421,7 +422,7 @@ function Inbox() {
 const tabs = [['overview', 'Overview', Overview], ['artworks', 'Artworks', Artworks], ['orders', 'Orders', Orders], ['videos', 'Videos', VideosAdmin], ['blog', 'Blog', BlogAdmin], ['inbox', 'Inbox', Inbox], ['music', 'Music', MusicAdmin], ['settings', 'Site', SettingsAdmin], ['password', 'Password', PasswordAdmin]]
 
 export default function Admin() {
-  const { isAdmin, logout } = useStore()
+  const { isAdmin, logout, adminLoading, adminError, refreshAdmin } = useStore()
   const [tab, setTab] = useState('overview')
   const [menuOpen, setMenuOpen] = useState(false)
   if (!isAdmin) return <Login />
@@ -448,7 +449,11 @@ export default function Admin() {
           {tabs.map(([id, l]) => <button key={id} onClick={() => chooseTab(id)} className={`${tab === id ? btn : btn2} w-full text-left`}>{l}</button>)}
         </nav>
       )}
-      <main className="mt-6"><Active /></main>
+      <main className="mt-6">
+        {adminLoading && <p role="status" className="mb-4 text-sm text-neutral-500">Refreshing admin data…</p>}
+        {adminError && <div role="alert" className={`${card} mb-4 flex flex-wrap items-center justify-between gap-3 text-sm`}><span>Could not load admin data: {adminError}</span><button onClick={refreshAdmin} className={btn2}>Try again</button></div>}
+        <Active />
+      </main>
     </div>
   )
 }

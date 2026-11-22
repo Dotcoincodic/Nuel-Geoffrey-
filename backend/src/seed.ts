@@ -15,7 +15,7 @@ async function main() {
 
   await m('User').findOneAndUpdate(
     { email: ADMIN_EMAIL.toLowerCase() },
-    { $set: { email: ADMIN_EMAIL.toLowerCase(), passwordHash: await bcrypt.hash(ADMIN_PASSWORD, 12) } },
+    { $set: { email: ADMIN_EMAIL.toLowerCase(), passwordHash: await bcrypt.hash(ADMIN_PASSWORD, 12) }, $inc: { tokenVersion: 1 } },
     { upsert: true },
   )
   console.log(`Admin ready: ${ADMIN_EMAIL}`)

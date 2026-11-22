@@ -12,6 +12,8 @@ export function StoreProvider({ children }) {
   const [pub, setPub] = useState(null)
   const [err, setErr] = useState('')
   const [adminData, setAdminData] = useState({ orders: [], messages: [] })
+  const [adminLoading, setAdminLoading] = useState(false)
+  const [adminError, setAdminError] = useState('')
   const [isAdmin, setIsAdmin] = useState(Boolean(getToken()))
   const [cart, setCart] = useState(() => read('artist-cart-v1', []))
   const [reacted, setReacted] = useState(() => read('artist-reacted-v1', []))
@@ -20,10 +22,20 @@ export function StoreProvider({ children }) {
     try { setPub(await api('/public')); setErr('') } catch (e) { setErr(e.message) }
   }, [])
   const loadAdmin = useCallback(async () => {
-    const [orders, messages] = await Promise.all([api('/orders'), api('/messages')])
-    setAdminData({ orders, messages })
+    setAdminLoading(true)
+    setAdminError('')
+    try {
+      const [orders, messages] = await Promise.all([api('/orders'), api('/messages')])
+      setAdminData({ orders, messages })
+    } catch (e) {
+      setAdminError(e.message)
+      throw e
+    } finally {
+      setAdminLoading(false)
+    }
   }, [])
-  const logout = useCallback(() => { setToken(null); setIsAdmin(false); setAdminData({ orders: [], messages: [] }) }, [])
+  const logout = useCallback(() => { setToken(null); setIsAdmin(false); setAdminData({ orders: [], messages: [] }); setAdminError('') }, [])
+  const refreshAdmin = useCallback(() => loadAdmin().catch(() => {}), [loadAdmin])
 
   useEffect(() => { loadPublic() }, [loadPublic])
   useEffect(() => { if (isAdmin) loadAdmin().catch(() => {}) }, [isAdmin, loadAdmin])
@@ -66,7 +78,7 @@ export function StoreProvider({ children }) {
 
   const value = {
     works: pub.works, tracks: pub.tracks, videos: pub.videos, posts: pub.posts, settings: pub.settings,
-    orders: adminData.orders, messages: adminData.messages,
+    orders: adminData.orders, messages: adminData.messages, adminLoading, adminError, refreshAdmin,
     cart, cartLines, subtotal, reacted, isAdmin,
 
     login: async (email, password) => {
@@ -87,7 +99,7 @@ export function StoreProvider({ children }) {
     addToCart: (work, option) =>
       setCart((c) => (c.some((x) => x.workId === work.id && x.option === option) ? c : [...c, { key: work.id + option, workId: work.id, option, qty: 1 }])),
     removeFromCart: (key) => setCart((c) => c.filter((x) => x.key !== key)),
-    setQty: (key, qty) => setCart((c) => c.map((x) => (x.key === key ? { ...x, qty: Math.max(1, qty) } : x))),
+    setQty: (key, qty) => setCart((c) => c.map((x) => (x.key === key ? { ...x, qty: Math.min(20, Math.max(1, qty)) } : x))),
 
     // The server recalculates prices and checks stock. It returns { order, authorizationUrl }.
     placeOrder: async ({ customer }) => {
@@ -98,13 +110,19 @@ export function StoreProvider({ children }) {
     },
     updateOrder: (id, patch) => run(async () => { await api('/orders/' + id, { method: 'PATCH', body: { status: patch.status } }); await Promise.all([loadAdmin(), loadPublic()]) }),
 
-    react: (videoId, kind) => {
+    react: async (videoId, kind) => {
       const key = videoId + ':' + kind
       const has = reacted.includes(key)
       const delta = has ? -1 : 1
       setReacted((r) => (has ? r.filter((k) => k !== key) : [...r, key]))
       setPub((p) => ({ ...p, videos: p.videos.map((v) => (v.id === videoId ? { ...v, [kind]: Math.max(0, (v[kind] || 0) + delta) } : v)) }))
-      api(`/videos/${videoId}/react`, { method: 'POST', body: { kind, delta } }).catch(() => {})
+      try {
+        await api(`/videos/${videoId}/react`, { method: 'POST', body: { kind, delta } })
+      } catch (e) {
+        setReacted((r) => (has ? [...r, key] : r.filter((k) => k !== key)))
+        setPub((p) => ({ ...p, videos: p.videos.map((v) => (v.id === videoId ? { ...v, [kind]: Math.max(0, (v[kind] || 0) - delta) } : v)) }))
+        alert(e.message)
+      }
     },
 
     sendMessage: (m) => run(async () => { await api('/messages', { method: 'POST', body: m }); return true }),
