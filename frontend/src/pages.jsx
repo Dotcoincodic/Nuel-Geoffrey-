@@ -130,7 +130,7 @@ export function LegalPage({ kind }) {
     ['What we collect', 'Details you give us: your name, email, phone number and delivery address when you place an order, and the messages and comments you send through our forms. We also store your theme choice and cart in your browser.'],
     ['How we use it', 'To process and deliver orders, reply to your messages, and run the site. We do not sell your personal information.'],
     ['Payments', 'Card payments are handled by Paystack. We never see or store your card details. Paystack\'s own privacy policy applies to the payment.'],
-    ['Google services', 'This site loads fonts from Google Fonts and embeds a Google Maps view in the Contact section. Your browser contacts Google servers for these features, and your IP address is shared with Google. See the Google Privacy Policy at '],
+    ['Google services', 'This site loads fonts from Google Fonts. Your browser contacts Google servers to retrieve the fonts, and your IP address is shared with Google. See the Google Privacy Policy at '],
     ['Your choices', `You can ask us to see, correct or delete your information by emailing ${settings.email}.`],
   ]
   const terms = [
@@ -140,7 +140,7 @@ export function LegalPage({ kind }) {
     ['Commissions', 'Commissions require a deposit to begin. Timelines and final details are agreed in writing before work starts.'],
     ['Returns', 'Please contact us within 7 days of delivery if a piece arrives damaged. Custom commissions are not refundable once work has started.'],
     ['Comments and messages', 'Be respectful. We may remove content that is abusive or unlawful.'],
-    ['Google services', 'This site uses Google Fonts and embeds Google Maps in the Contact section. The Google Terms of Service apply to your use of those services: '],
+    ['Google services', 'This site uses Google Fonts. The Google Terms of Service apply to your use of those services: '],
     ['Changes', 'We may update these terms. Continued use of the site means you accept the updated terms.'],
   ]
   const sections = kind === 'privacy' ? privacy : terms

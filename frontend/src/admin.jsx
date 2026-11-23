@@ -1,8 +1,27 @@
 import { useState } from "react";
-import { FiMenu, FiPlus, FiTrash2, FiX } from "react-icons/fi";
+import {
+  FiFileText,
+  FiGlobe,
+  FiGrid,
+  FiImage,
+  FiInbox,
+  FiLock,
+  FiArrowRight,
+  FiMenu,
+  FiMusic,
+  FiPlus,
+  FiSearch,
+  FiSettings,
+  FiShoppingBag,
+  FiTrash2,
+  FiUser,
+  FiVideo,
+  FiX,
+} from "react-icons/fi";
 import { useStore, money } from "./store";
 import { uploadFile } from "./api";
 import { ThemeToggle } from "./theme";
+import logo from "./image/logo.PNG";
 
 const input =
   "w-full rounded-lg border border-black/15 bg-transparent px-3 py-2 text-sm dark:border-white/20";
@@ -96,37 +115,103 @@ function Login() {
     setBusy(false);
   };
   return (
-    <form
-      onSubmit={submit}
-      className="mx-auto mt-32 w-full max-w-xs space-y-3 px-5"
-    >
-      <h1 className="text-2xl font-semibold"> Admin Dashboard</h1>
-      <input
-        type="email"
-        autoFocus
-        required
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="Email"
-        className={input}
-      />
-      <input
-        type="password"
-        required
-        value={pw}
-        onChange={(e) => setPw(e.target.value)}
-        placeholder="Password"
-        className={input}
-      />
-      {err && (
-        <p role="alert" className="text-sm text-red-600">
-          {err}
+    <main className="grid min-h-svh place-items-center overflow-hidden bg-[#111113] px-5 py-10 text-white">
+      <form
+        onSubmit={submit}
+        className="relative isolate w-full max-w-md overflow-hidden rounded-[2rem] border border-white/25 bg-white/[0.035] px-6 py-10 shadow-[0_28px_100px_rgba(0,0,0,0.55)] backdrop-blur-2xl sm:px-10 sm:py-12"
+      >
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -left-12 -top-12 -z-10 h-44 w-56 rounded-full bg-rose-400/40 blur-[65px]"
+        />
+        <div className="pointer-events-none absolute inset-0 -z-20 bg-gradient-to-br from-white/[0.06] via-transparent to-black/30" />
+
+        <header className="mb-8 text-center">
+          <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.28em] text-rose-200/75">
+            Admin access
+          </p>
+          <h1 className="text-3xl font-medium tracking-tight sm:text-4xl">
+            Welcome back
+          </h1>
+          <p className="mt-2 text-sm text-white/45">
+            Sign in to your admin dashboard
+          </p>
+        </header>
+
+        <div className="space-y-4">
+          <label
+            htmlFor="admin-email"
+            className="block rounded-full border border-white/20 bg-transparent px-6 py-3 transition focus-within:bg-transparent"
+          >
+            <span className="block text-xs text-white/45">Email</span>
+            <input
+              id="admin-email"
+              type="email"
+              autoFocus
+              autoComplete="username"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              className="mt-1 w-full bg-transparent text-sm text-white outline-none placeholder:text-white/25"
+            />
+          </label>
+
+          <div className="relative rounded-full border border-white/15 bg-transparent px-6 py-3 transition focus-within:border-white/35 focus-within:bg-transparent">
+            <label
+              htmlFor="admin-password"
+              className="block text-xs text-white/45"
+            >
+              Password
+            </label>
+            <input
+              id="admin-password"
+              type="password"
+              autoComplete="current-password"
+              required
+              value={pw}
+              onChange={(e) => setPw(e.target.value)}
+              placeholder="Enter your password"
+              className="mt-1 w-full bg-transparent pr-12 text-sm text-white outline-none placeholder:text-white/25"
+            />
+            <button
+              type="submit"
+              disabled={busy}
+              aria-label={busy ? "Signing in" : "Sign in"}
+              title={busy ? "Signing in" : "Sign in"}
+              className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-amber-500 text-[#171214] shadow-[0_0_24px_rgba(245,158,11,0.48)] transition hover:scale-105 hover:bg-amber-400 disabled:cursor-wait disabled:opacity-70"
+            >
+              {busy ? (
+                <span className="text-xs">…</span>
+              ) : (
+                <FiArrowRight aria-hidden="true" className="h-5 w-5" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {err && (
+          <p
+            role="alert"
+            className="mt-4 rounded-xl border border-rose-300/20 bg-rose-300/10 px-4 py-3 text-sm text-rose-200"
+          >
+            {err}
+          </p>
+        )}
+
+        <div
+          className="my-8 flex items-center gap-4 text-xs text-white/35"
+          aria-hidden="true"
+        >
+          <span className="h-px flex-1 bg-white/15" />
+          <span>ADMIN ACCOUNT</span>
+          <span className="h-px flex-1 bg-white/15" />
+        </div>
+        <p className="text-center text-xs leading-5 text-white/40">
+          Use the email and password configured for your studio administrator.
         </p>
-      )}
-      <button disabled={busy} className={`${btn} w-full`}>
-        {busy ? "Signing in…" : "Sign in"}
-      </button>
-    </form>
+      </form>
+    </main>
   );
 }
 
@@ -535,11 +620,14 @@ function MusicAdmin() {
   return (
     <div className="space-y-4">
       <button
-        className={btn}
+        className={`${btn} inline-flex items-center gap-2`}
         onClick={() =>
           setEdit({ title: "", meta: "", length: "", src: "", cover: "" })
         }
       >
+        <span aria-hidden="true" className="admin-plus-shake">
+          <FiPlus />
+        </span>
         Add track
       </button>
       {edit && (
@@ -862,7 +950,7 @@ function VideosAdmin() {
   return (
     <div className="space-y-4">
       <button
-        className={btn}
+        className={`${btn} inline-flex items-center gap-2`}
         onClick={() =>
           setEdit({
             title: "",
@@ -874,6 +962,9 @@ function VideosAdmin() {
           })
         }
       >
+        <span aria-hidden="true" className="admin-plus-shake">
+          <FiPlus />
+        </span>
         Add video
       </button>
       {edit && (
@@ -1179,104 +1270,336 @@ function Inbox() {
 }
 
 const tabs = [
-  ["overview", "Overview", Overview],
-  ["artworks", "Artworks", Artworks],
-  ["orders", "Orders", Orders],
-  ["videos", "Videos", VideosAdmin],
-  ["blog", "Blog", BlogAdmin],
-  ["inbox", "Inbox", Inbox],
-  ["music", "Music", MusicAdmin],
-  ["settings", "Site", SettingsAdmin],
-  ["password", "Password", PasswordAdmin],
+  {
+    id: "overview",
+    label: "Overview",
+    description: "See studio activity and recent updates.",
+    Icon: FiGrid,
+    Component: Overview,
+  },
+  {
+    id: "artworks",
+    label: "Artworks",
+    description: "Add, edit, and organize artwork.",
+    Icon: FiImage,
+    Component: Artworks,
+  },
+  {
+    id: "orders",
+    label: "Orders",
+    description: "Review purchases and update order status.",
+    Icon: FiShoppingBag,
+    Component: Orders,
+  },
+  {
+    id: "videos",
+    label: "Videos",
+    description: "Manage featured videos and comments.",
+    Icon: FiVideo,
+    Component: VideosAdmin,
+  },
+  {
+    id: "blog",
+    label: "Blog",
+    description: "Write and manage studio posts.",
+    Icon: FiFileText,
+    Component: BlogAdmin,
+  },
+  {
+    id: "inbox",
+    label: "Inbox",
+    description: "Read and manage visitor messages.",
+    Icon: FiInbox,
+    Component: Inbox,
+  },
+  {
+    id: "music",
+    label: "Music",
+    description: "Manage music tracks and links.",
+    Icon: FiMusic,
+    Component: MusicAdmin,
+  },
+  {
+    id: "settings",
+    label: "Site",
+    description: "Edit site details, images, and social links.",
+    Icon: FiSettings,
+    Component: SettingsAdmin,
+  },
+  {
+    id: "password",
+    label: "Password",
+    description: "Change the admin password.",
+    Icon: FiLock,
+    Component: PasswordAdmin,
+  },
 ];
 
+function AdminSidebar({
+  activeTab,
+  onSelect,
+  settings,
+  search,
+  setSearch,
+  onClose,
+  onHoverDescription,
+  onLogout,
+}) {
+  const query = search.trim().toLowerCase();
+  const matches = (item) =>
+    `${item.label} ${item.description}`.toLowerCase().includes(query);
+  const primaryTabs = tabs.slice(0, 7).filter(matches);
+  const otherTabs = tabs.slice(7).filter(matches);
+
+  const renderTab = (item) => {
+    const selected = activeTab === item.id;
+    const Icon = item.Icon;
+    return (
+      <button
+        key={item.id}
+        type="button"
+        title={item.description}
+        aria-label={`${item.label}: ${item.description}`}
+        aria-current={selected ? "page" : undefined}
+        onClick={() => onSelect(item.id)}
+        onMouseEnter={() => onHoverDescription(item.description)}
+        onMouseLeave={() => onHoverDescription("")}
+        onFocus={() => onHoverDescription(item.description)}
+        onBlur={() => onHoverDescription("")}
+        className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition duration-200 ${selected ? "bg-gradient-to-r from-white/[0.09] via-white/[0.08] to-violet-700/35 text-white shadow-[inset_-18px_0_28px_rgba(91,33,182,0.24)]" : "text-neutral-400 hover:bg-white/[0.05] hover:text-white"}`}
+      >
+        <Icon
+          aria-hidden="true"
+          className={`h-5 w-5 shrink-0 ${selected ? "text-white" : "text-neutral-500 group-hover:text-neutral-200"}`}
+        />
+        <span className="min-w-0 flex-1 truncate">{item.label}</span>
+        <span
+          className={`absolute right-1 top-1/2 h-6 w-1 -translate-y-1/2 rounded-full bg-violet-400 shadow-[0_0_12px_rgba(139,92,246,0.8)] transition-opacity ${selected ? "opacity-100" : "opacity-0"}`}
+        />
+      </button>
+    );
+  };
+
+  return (
+    <div className="flex h-full flex-col px-4 py-5 text-white">
+      <div className="flex items-center justify-between border-b border-white/10 pb-5">
+        <a
+          href="#top"
+          onClick={() => {
+            location.hash = "";
+            onClose?.();
+          }}
+          className="flex min-w-0 items-center gap-3"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.06] p-1.5">
+            <img src={logo} alt="" className="h-full w-full object-contain" />
+          </span>
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-semibold tracking-wide">
+              Admin Dashboard
+            </span>
+            <span className="mt-0.5 block truncate text-xs text-neutral-500">
+              {settings.name}
+            </span>
+          </span>
+        </a>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close navigation"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-neutral-400 transition hover:bg-white/10 hover:text-white"
+          >
+            <FiX />
+          </button>
+        )}
+      </div>
+
+      <label className="mt-5 flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2.5 text-neutral-500 focus-within:border-violet-400/50 focus-within:text-neutral-300">
+        <FiSearch aria-hidden="true" className="shrink-0" />
+        <span className="sr-only">Search admin sections</span>
+        <input
+          type="search"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search sections..."
+          className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-neutral-600"
+        />
+      </label>
+
+      <nav
+        className="mt-6 flex-1 space-y-5 overflow-y-auto pb-3"
+        aria-label="Admin dashboard"
+      >
+        {primaryTabs.length > 0 && (
+          <div className="space-y-1">
+            {!query && (
+              <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-neutral-600">
+                Workspace
+              </p>
+            )}
+            {primaryTabs.map(renderTab)}
+          </div>
+        )}
+        {otherTabs.length > 0 && (
+          <div className="space-y-1 border-t border-white/10 pt-4">
+            {!query && (
+              <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-neutral-600">
+                Other
+              </p>
+            )}
+            {otherTabs.map(renderTab)}
+          </div>
+        )}
+        {primaryTabs.length === 0 && otherTabs.length === 0 && (
+          <p className="px-3 py-4 text-sm text-neutral-500">
+            No matching section.
+          </p>
+        )}
+      </nav>
+
+      <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.035] p-3">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-neutral-500">
+          Studio workspace
+        </p>
+        <p className="mt-1 truncate text-sm font-medium text-neutral-200">
+          {settings.name}
+        </p>
+        <p className="mt-1 text-xs leading-4 text-neutral-500">
+          Manage artwork, orders, and site content.
+        </p>
+      </div>
+
+      <div className="mt-3 space-y-1 border-t border-white/10 pt-3">
+        <a
+          href="#top"
+          onClick={() => {
+            location.hash = "";
+            onClose?.();
+          }}
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-neutral-400 transition hover:bg-white/[0.06] hover:text-white"
+        >
+          <FiGlobe aria-hidden="true" className="h-5 w-5 text-neutral-500" />
+          <span>View site</span>
+        </a>
+        <button
+          type="button"
+          onClick={onLogout}
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-neutral-400 transition hover:bg-white/[0.06] hover:text-white"
+        >
+          <span
+            aria-hidden="true"
+            className="flex items-center text-neutral-500"
+          >
+            <FiUser className="h-5 w-5" />
+            <FiArrowRight className="-ml-1 h-3.5 w-3.5" />
+          </span>
+          <span>Sign out</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function Admin() {
-  const { isAdmin, logout, adminLoading, adminError, refreshAdmin } =
+  const { isAdmin, logout, adminLoading, adminError, refreshAdmin, settings } =
     useStore();
   const [tab, setTab] = useState("overview");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [hoveredDescription, setHoveredDescription] = useState("");
   if (!isAdmin) return <Login />;
-  const Active = tabs.find((t) => t[0] === tab)[2];
+  const activeItem = tabs.find((item) => item.id === tab) || tabs[0];
+  const Active = activeItem.Component;
   const chooseTab = (id) => {
     setTab(id);
     setMenuOpen(false);
+    setHoveredDescription("");
+  };
+  const sidebarProps = {
+    activeTab: tab,
+    onSelect: chooseTab,
+    settings,
+    search,
+    setSearch,
+    onHoverDescription: setHoveredDescription,
+    onLogout: logout,
   };
   return (
-    <div className="mx-auto w-full max-w-4xl px-5 py-6">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">Studio admin</h1>
-        <div className="flex items-center gap-3">
-          <ThemeToggle />
-          <button
-            type="button"
-            onClick={() => setMenuOpen((open) => !open)}
-            aria-label={menuOpen ? "Close admin menu" : "Open admin menu"}
-            aria-expanded={menuOpen}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-black/15 text-xl hover:border-primary dark:border-white/20 md:hidden"
-          >
-            {menuOpen ? <FiX /> : <FiMenu />}
-          </button>
-          <a
-            href="#top"
-            onClick={() => (location.hash = "")}
-            className="text-sm hover:text-primary"
-          >
-            View site
-          </a>
-          <button className="text-sm text-neutral-500" onClick={logout}>
-            Sign out
-          </button>
-        </div>
-      </header>
-      <nav
-        className="mt-5 hidden gap-2 overflow-x-auto pb-1 md:flex"
-        aria-label="Admin dashboard"
-      >
-        {tabs.map(([id, l]) => (
-          <button
-            key={id}
-            onClick={() => chooseTab(id)}
-            className={tab === id ? btn : btn2}
-          >
-            {l}
-          </button>
-        ))}
-      </nav>
-      {menuOpen && (
-        <nav
-          className="mt-4 flex flex-col gap-2 rounded-2xl border border-black/10 bg-paper-raised p-3 shadow-lg dark:border-white/10 dark:bg-night-raised md:hidden"
-          aria-label="Admin dashboard"
-        >
-          {tabs.map(([id, l]) => (
-            <button
-              key={id}
-              onClick={() => chooseTab(id)}
-              className={`${tab === id ? btn : btn2} w-full text-left`}
-            >
-              {l}
-            </button>
-          ))}
-        </nav>
-      )}
-      <main className="mt-6">
-        {adminLoading && (
-          <p role="status" className="mb-4 text-sm text-neutral-500">
-            Refreshing admin data…
-          </p>
-        )}
-        {adminError && (
-          <div
-            role="alert"
-            className={`${card} mb-4 flex flex-wrap items-center justify-between gap-3 text-sm`}
-          >
-            <span>Could not load admin data: {adminError}</span>
-            <button onClick={refreshAdmin} className={btn2}>
-              Try again
-            </button>
+    <div className="min-h-svh bg-neutral-100 text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100 lg:pl-72">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r border-white/[0.07] bg-[#151515] lg:flex">
+        <AdminSidebar {...sidebarProps} />
+      </aside>
+
+      <main className="min-h-svh min-w-0 flex-1">
+        <div className="mx-auto w-full max-w-6xl px-5 py-6 sm:px-8 lg:px-10">
+          <header className="flex flex-wrap items-center justify-between gap-3 border-b border-black/10 pb-5 dark:border-white/10">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setMenuOpen(true)}
+                aria-label="Open admin navigation"
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-black/10 text-xl transition hover:border-violet-500 lg:hidden dark:border-white/10"
+              >
+                <FiMenu />
+              </button>
+              <div>
+                <p className="mb-2 text-xs font-medium tracking-wide text-neutral-500">
+                  Admin Dashboard
+                </p>
+                <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
+                  {activeItem.label}
+                </h1>
+                <p className="mt-1 min-h-4 text-xs text-neutral-500">
+                  {hoveredDescription || activeItem.description}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <ThemeToggle />
+            </div>
+          </header>
+          <div className="mt-6">
+            {adminLoading && (
+              <p role="status" className="mb-4 text-sm text-neutral-500">
+                Refreshing admin data…
+              </p>
+            )}
+            {adminError && (
+              <div
+                role="alert"
+                className={`${card} mb-4 flex flex-wrap items-center justify-between gap-3 text-sm`}
+              >
+                <span>Could not load admin data: {adminError}</span>
+                <button onClick={refreshAdmin} className={btn2}>
+                  Try again
+                </button>
+              </div>
+            )}
+            <Active />
           </div>
-        )}
-        <Active />
+        </div>
       </main>
+
+      {menuOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 lg:hidden"
+          onClick={() => setMenuOpen(false)}
+        >
+          <aside
+            role="dialog"
+            aria-modal="true"
+            aria-label="Admin navigation"
+            className="relative z-10 h-full w-72 max-w-[88vw] bg-[#151515] shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <AdminSidebar
+              {...sidebarProps}
+              onClose={() => setMenuOpen(false)}
+            />
+          </aside>
+        </div>
+      )}
     </div>
   );
 }

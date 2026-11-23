@@ -6,4 +6,23 @@
   body { @apply bg-paper text-neutral-900 font-sans antialiased transition-colors duration-300 dark:bg-night dark:text-neutral-100; }
   :focus-visible { @apply outline outline-2 outline-offset-2 outline-primary; }
 }
-@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .animate-marquee { animation: none; } }
+
+@keyframes admin-plus-shake {
+  0%, 28%, 100% { transform: rotate(0deg); }
+  4% { transform: rotate(-16deg); }
+  8% { transform: rotate(16deg); }
+  12% { transform: rotate(-13deg); }
+  16% { transform: rotate(13deg); }
+  22% { transform: rotate(-6deg); }
+}
+
+.admin-plus-shake {
+  display: inline-flex;
+  transform-origin: center;
+  animation: admin-plus-shake 2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .animate-marquee, .admin-plus-shake { animation: none; }
+}
