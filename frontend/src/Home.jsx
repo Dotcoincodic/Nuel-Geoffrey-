@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AnimatePresence, motion, useScroll, useTransform } from 'framer-motion'
+import { AnimatePresence, animate, motion, useMotionValue, useMotionValueEvent, useScroll, useTransform } from 'framer-motion'
 import { FaFacebookF, FaInstagram, FaTwitter, FaWhatsapp } from 'react-icons/fa'
 import { FiHeart, FiMail, FiMapPin, FiSend, FiShare2, FiShoppingCart } from 'react-icons/fi'
 import { platforms, steps } from './assets'
@@ -465,14 +465,6 @@ export function Contact() {
   }
   return (
     <section id="contact" className="bg-paper pb-16 dark:bg-night">
-      <div className={`${wrap} py-14 text-center sm:py-16 lg:py-20`}>
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">Get in touch</p>
-        <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Contact Us</h2>
-        <p className="mx-auto mt-3 max-w-xl text-sm text-neutral-600 dark:text-neutral-300 sm:text-base">
-          Questions about a piece, a commission or a collaboration? We would love to hear from you.
-        </p>
-      </div>
-
       <div className="bg-neutral-100 dark:bg-night-raised">
         <div className={`${wrap} grid gap-10 py-10 sm:py-14 lg:grid-cols-2 lg:items-center lg:gap-16 lg:py-16`}>
           <div className="lg:py-4">
@@ -534,19 +526,73 @@ export function Contact() {
           </form>
         </div>
 
-        {settings.location && (
-          <div className={`${wrap} pb-10 sm:pb-14`}>
-            <div className="aspect-[16/9] overflow-hidden rounded-2xl border border-black/10 bg-neutral-200 dark:border-white/10 dark:bg-night md:aspect-[16/6] lg:aspect-[16/5]">
-              <iframe
-                title={`Map showing ${settings.location}`}
-                src={`https://maps.google.com/maps?q=${mapQuery}&z=12&output=embed`}
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                className="h-full w-full border-0 grayscale-[0.35]"
-              />
-            </div>
-          </div>
-        )}
+        {settings.location && <LocationExperience location={settings.location} mapQuery={mapQuery} />}
+      </div>
+    </section>
+  )
+}
+
+function LocationExperience({ location, mapQuery }) {
+  const sectionRef = useRef(null)
+  const [mapClear, setMapClear] = useState(false)
+  const [reminded, setReminded] = useState(false)
+  const remindedRef = useRef(false)
+  const { scrollYProgress } = useScroll({ target: sectionRef, offset: ['start start', 'end end'] })
+  const panelProgress = useMotionValue(0)
+  useMotionValueEvent(scrollYProgress, 'change', (latest) => {
+    if (!remindedRef.current) panelProgress.set(latest)
+  })
+  const width = useTransform(panelProgress, [0, 1], ['50vw', '100vw'])
+  const height = useTransform(panelProgress, [0, 1], ['50svh', '100svh'])
+  const borderRadius = useTransform(panelProgress, [0, 1], ['1.5rem', '0rem'])
+
+  const remindLater = () => {
+    remindedRef.current = true
+    setReminded(true)
+    animate(panelProgress, 0, { duration: 1.35, ease: 'easeInOut' })
+  }
+
+  return (
+    <section ref={sectionRef} aria-label={`Location: ${location}`} className="relative h-[190svh] bg-neutral-950">
+      <div className="sticky top-0 flex h-[100svh] w-full items-center justify-center overflow-hidden bg-neutral-950">
+        <motion.div
+          style={{ width, height, borderRadius }}
+          className="relative overflow-hidden bg-neutral-900 shadow-2xl"
+        >
+          <motion.iframe
+            title={`Map showing ${location}`}
+            src={`https://maps.google.com/maps?q=${mapQuery}&z=12&output=embed`}
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            animate={{ filter: mapClear ? 'blur(0px)' : 'blur(7px)', scale: mapClear ? 1 : 1.06 }}
+            transition={{ duration: 0.8, ease: 'easeOut' }}
+            className={`h-full w-full border-0 ${mapClear ? 'pointer-events-auto' : 'pointer-events-none'}`}
+          />
+        </motion.div>
+
+        <AnimatePresence>
+          {!mapClear && !reminded && (
+            <motion.div
+              initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -18 }}
+              transition={{ duration: 0.4 }}
+              className="absolute inset-0 z-10 grid place-items-center bg-black/25 px-6 text-center"
+            >
+              <div className="max-w-lg text-white">
+                <h2 className="text-4xl font-semibold tracking-tight sm:text-5xl">Location</h2>
+                <p className="mx-auto mt-4 max-w-md text-base text-white/80 sm:text-lg">Pay a visit to our studio gallery.</p>
+                <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+                  <button type="button" onClick={() => setMapClear(true)} className="inline-flex min-h-12 items-center justify-center rounded-full bg-primary px-7 py-3 text-sm font-semibold text-primary-ink transition hover:bg-primary-soft">
+                    I’m interested
+                  </button>
+                  <button type="button" onClick={remindLater} className="inline-flex min-h-12 items-center justify-center rounded-full border border-white/40 bg-white/10 px-7 py-3 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/20">
+                    Remind me later
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        <p role="status" className="sr-only">{mapClear ? `Map revealed for ${location}.` : reminded ? 'Map minimized for later.' : ''}</p>
       </div>
     </section>
   )

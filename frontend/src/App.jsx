@@ -132,7 +132,7 @@ function Footer() {
   const socials = [
     [FaInstagram, 'Instagram', settings.instagram], [FaFacebookF, 'Facebook', settings.facebook],
     [FaWhatsapp, 'WhatsApp', settings.whatsapp], [FaTwitter, 'Twitter', settings.twitter],
-  ].filter(([, , href]) => Boolean(href && href !== '#'))
+  ]
   const linkClass = 'transition-colors hover:text-primary'
   return (
     <div className="bg-neutral-200 px-4 py-10 dark:bg-night sm:px-8 sm:py-14">
@@ -157,17 +157,18 @@ function Footer() {
             </div>
           </div>
 
-          <div className="space-y-3 text-sm text-white/65 md:min-w-56 md:text-right">
-            {socials.length > 0 && (
-              <nav className="flex items-center gap-4 md:justify-end" aria-label="Social links">
-                {socials.map(([Icon, label, href]) => (
-                  <a key={label} href={href} target="_blank" rel="noreferrer" aria-label={label} className="text-base transition-colors hover:text-primary">
-                    <Icon />
-                  </a>
-                ))}
-              </nav>
-            )}
-            {settings.email && <a className={linkClass} href={`mailto:${settings.email}`}>Support: {settings.email}</a>}
+          <div className="md:min-w-56">
+            <nav className="flex items-center gap-3 md:justify-end" aria-label="Social links">
+              {socials.map(([Icon, label, href]) => href && href !== '#' ? (
+                <a key={label} href={href} target="_blank" rel="noreferrer" aria-label={label} className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-base text-primary-ink transition hover:bg-primary-soft">
+                  <Icon />
+                </a>
+              ) : (
+                <span key={label} title={label} aria-hidden="true" className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-base text-primary-ink">
+                  <Icon />
+                </span>
+              ))}
+            </nav>
           </div>
         </div>
       </footer>
