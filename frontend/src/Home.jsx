@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, useScroll, useTransform } from 'framer-motion'
 import { FaFacebookF, FaInstagram, FaTwitter, FaWhatsapp } from 'react-icons/fa'
-import { FiSend } from 'react-icons/fi'
+import { FiHeart, FiMail, FiMapPin, FiSend, FiShare2, FiShoppingCart } from 'react-icons/fi'
 import { platforms, steps } from './assets'
 import { useStore, money } from './store'
 import { flyToCart } from './fly'
@@ -38,7 +38,7 @@ export function Hero() {
 
   return (
     <section ref={ref} id="top" className="relative h-[145svh]">
-      <div className="sticky top-0 flex h-[100svh] items-center overflow-hidden bg-paper dark:bg-night">
+      <div className="sticky top-0 flex h-[100svh] items-start overflow-hidden bg-paper pt-24 dark:bg-night sm:items-center sm:pt-0">
         <motion.div style={{ opacity: bgOpacity }} className="absolute inset-0" aria-hidden="true">
           <AnimatePresence initial={false}>
             {activeSlide && <motion.img
@@ -66,7 +66,7 @@ export function Hero() {
               </motion.p>
             </AnimatePresence>
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.95, duration: 0.6 }} className="mt-4 flex flex-wrap gap-3">
-              <a href="#gallery" className={btnPrimary}>Shop originals</a>
+              <a href="#gallery" className={`${btnPrimary} gap-2`}><FiShoppingCart aria-hidden="true" />Shop originals</a>
               <a href="#gallery" onClick={() => window.dispatchEvent(new CustomEvent('gallery-tab', { detail: 'archive' }))} className={btnGhost}>View portfolio</a>
             </motion.div>
           </motion.div>
@@ -117,12 +117,18 @@ export function Hero() {
 /* ---------- Marquee ---------- */
 export function Marquee() {
   const { works } = useStore()
-  const names = works.length ? works.map((w) => w.title) : ['Original works']
-  const row = [...names, ...names]
+  const artWords = ['Pigment', 'Texture', 'Gesture', 'Rhythm', 'Contrast', 'Colour', 'Form', 'Light', 'Movement', 'Imagination']
+  const items = [...(works.length ? works.map((w) => w.title) : ['Original works']), ...artWords]
+  const row = [...items, ...items]
   return (
-    <div className="relative z-10 overflow-hidden bg-primary py-4 text-primary-ink" aria-hidden="true">
-      <div className="flex w-max animate-marquee gap-10 text-xl font-medium">
-        {row.map((n, i) => <span key={i}>{n}</span>)}
+    <div className="relative z-10 overflow-hidden bg-primary py-2 text-primary-ink" aria-hidden="true">
+      <div className="flex w-max animate-marquee items-center gap-6 text-base font-medium">
+        {row.map((n, i) => (
+          <span key={`${i}-${n}`} className="flex shrink-0 items-center gap-4 whitespace-nowrap">
+            <span>{n}</span>
+            <span className="text-base opacity-75">•</span>
+          </span>
+        ))}
       </div>
     </div>
   )
@@ -171,7 +177,9 @@ function Modal({ item, onClose }) {
                   </button>
                 ))}
               </div>
-              <button disabled={inCart} onClick={add} className={`${btnPrimary} w-full disabled:opacity-60`}>{inCart ? 'Already in your cart' : `Add to cart, ${money(price)}`}</button>
+              <button disabled={inCart} onClick={add} className={`${btnPrimary} w-full gap-2 disabled:opacity-60`}>
+                {inCart ? 'Already in your cart' : <><FiShoppingCart aria-hidden="true" />Add to cart, {money(price)}</>}
+              </button>
               <p className="text-xs text-neutral-500">Originals are one of one. Shipping is added at checkout.</p>
             </div>
           ) : (
@@ -197,18 +205,73 @@ function StackCard({ w, last, onOpen }) {
   return (
     <div ref={ref} className={last ? '' : 'h-[112svh]'}>
       <motion.div style={{ opacity, scale }} className="sticky top-20">
-        <button onClick={() => onOpen(w)} className="block w-full text-left">
-          <div className="relative aspect-[4/5] max-h-[66svh] overflow-hidden rounded-2xl bg-neutral-200 dark:bg-night-raised">
-            {w.image ? <img src={w.image} alt={w.title} loading="lazy" className="h-full w-full object-cover" /> : <div className="grid h-full w-full place-items-center text-sm text-neutral-500">Artwork image not added</div>}
-            {w.collection === 'sale' && w.status && <span className={`absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-medium capitalize ${badge[w.status]}`}>{w.status}</span>}
-          </div>
-          <div className="mt-3 flex items-baseline justify-between gap-2">
-            <h3 className="font-medium">{w.title}</h3>
-            {w.collection === 'sale' ? <ShakePrice className="font-medium">{money(w.price)}</ShakePrice> : <span className="text-sm text-neutral-500">{w.year}</span>}
-          </div>
-        </button>
+        <GalleryCard w={w} onOpen={onOpen} />
       </motion.div>
     </div>
+  )
+}
+
+function GalleryCard({ w, onOpen }) {
+  const { cart, addToCart, settings } = useStore()
+  const imageRef = useRef(null)
+  const [liked, setLiked] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const isSale = w.collection === 'sale'
+  const canOriginal = isSale && w.status === 'available'
+  const canPrint = isSale && Number(w.printPrice) > 0
+  const option = canOriginal ? 'Original' : canPrint ? 'Print' : null
+  const inCart = option && cart.some((item) => item.workId === w.id && item.option === option)
+
+  const add = () => {
+    if (!option) return onOpen(w)
+    flyToCart(imageRef.current, () => addToCart(w, option))
+  }
+  const share = async () => {
+    const url = `${window.location.origin}${window.location.pathname}#gallery`
+    const details = { title: w.title, text: `${w.title} by ${settings.name}`, url }
+    try {
+      if (navigator.share) await navigator.share(details)
+      else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url)
+        setCopied(true)
+        window.setTimeout(() => setCopied(false), 1800)
+      }
+    } catch (error) {
+      if (error?.name !== 'AbortError') setCopied(false)
+    }
+  }
+
+  return (
+    <article className="flex h-full flex-col rounded-3xl bg-paper-raised p-4 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl dark:bg-night-raised sm:p-5">
+      <div className="relative">
+        <button type="button" onClick={() => onOpen(w)} aria-label={`View ${w.title}`} className="block w-full text-left">
+          <div className="relative aspect-[4/5] max-h-[58svh] overflow-hidden rounded-2xl bg-neutral-100 dark:bg-night">
+            {w.image ? <img ref={imageRef} src={w.image} alt={w.title} loading="lazy" className="h-full w-full object-cover transition duration-700 hover:scale-105" /> : <div className="grid h-full w-full place-items-center text-sm text-neutral-500">Artwork image not added</div>}
+            {isSale && w.status && <span className={`absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-medium capitalize ${badge[w.status]}`}>{w.status}</span>}
+          </div>
+        </button>
+        <div className="absolute right-3 top-3 flex flex-col overflow-hidden rounded-xl bg-primary text-primary-ink shadow-lg">
+          <button type="button" onClick={() => setLiked((value) => !value)} aria-pressed={liked} aria-label={liked ? `Remove ${w.title} from favorites` : `Add ${w.title} to favorites`} className="flex h-11 w-11 items-center justify-center text-lg transition hover:bg-primary-soft">
+            <FiHeart className={liked ? 'fill-current' : ''} />
+          </button>
+          <button type="button" onClick={share} aria-label={copied ? 'Artwork link copied' : `Share ${w.title}`} className="flex h-11 w-11 items-center justify-center text-lg transition hover:bg-primary-soft">
+            <FiShare2 />
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-1 flex-col px-1 pt-4">
+        <button type="button" onClick={() => onOpen(w)} className="text-left text-base font-semibold leading-snug transition hover:text-primary sm:text-lg">{w.title}</button>
+        {isSale ? <ShakePrice className="mt-2 text-base font-semibold text-neutral-500">{money(w.price)}</ShakePrice> : <p className="mt-2 text-sm font-medium text-neutral-500">Archive work</p>}
+        <p className="mt-2 min-h-5 text-xs text-neutral-500">
+          {[w.medium, w.size, w.year].filter(Boolean).join(' · ') || (isSale ? 'Original artwork' : 'From the archive')}
+        </p>
+        <button type="button" onClick={add} disabled={Boolean(option && inCart)} className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-neutral-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary hover:text-primary-ink disabled:cursor-default disabled:bg-neutral-700 disabled:text-white/80">
+          {option && <FiShoppingCart aria-hidden="true" />}
+          <span>{option ? (inCart ? 'Added to cart' : option === 'Print' ? 'Add print to cart' : 'Add to cart') : isSale ? 'View details' : 'View artwork'}</span>
+        </button>
+      </div>
+    </article>
   )
 }
 
@@ -241,21 +304,12 @@ export function Gallery() {
       </p>
 
       {isDesktop ? (
-        <motion.div layout className="mt-10 grid grid-cols-3 gap-6">
+        <motion.div layout className="mt-10 grid grid-cols-2 gap-4 lg:grid-cols-3 lg:gap-6">
           <AnimatePresence mode="popLayout">
             {items.map((w, i) => (
-              <motion.article key={w.id} layout initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.94 }} transition={{ duration: 0.45, ease, delay: i * 0.05 }}>
-                <button onClick={() => setOpen(w)} className="group block w-full text-left">
-                  <div className="relative aspect-[4/5] overflow-hidden rounded-xl bg-neutral-200 dark:bg-night-raised">
-                    {w.image ? <img src={w.image} alt={w.title} loading="lazy" className="h-full w-full object-cover transition duration-700 group-hover:scale-105" /> : <div className="grid h-full w-full place-items-center text-sm text-neutral-500">Artwork image not added</div>}
-                    {w.collection === 'sale' && w.status && <span className={`absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-medium capitalize ${badge[w.status]}`}>{w.status}</span>}
-                  </div>
-                  <div className="mt-3 flex items-baseline justify-between gap-2">
-                    <h3 className="font-medium">{w.title}</h3>
-                    {w.collection === 'sale' ? <ShakePrice className="text-sm">{money(w.price)}</ShakePrice> : <span className="text-sm text-neutral-500">{w.year}</span>}
-                  </div>
-                </button>
-              </motion.article>
+              <motion.div key={w.id} layout initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.94 }} transition={{ duration: 0.45, ease, delay: i * 0.05 }} className="h-full">
+                <GalleryCard w={w} onOpen={setOpen} />
+              </motion.div>
             ))}
           </AnimatePresence>
         </motion.div>
@@ -369,12 +423,23 @@ function MusicPlayer({ tracks }) {
 export function About() {
   const { settings } = useStore()
   return (
-    <section id="about" className={`${wrap} grid items-center gap-10 pb-20 md:grid-cols-2`}>
-      {settings.aboutImage ? <motion.img initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.8, ease }} src={settings.aboutImage} alt="The artist in the studio" className="aspect-[4/5] w-full rounded-2xl object-cover" /> : <div aria-hidden="true" className="aspect-[4/5] w-full rounded-2xl bg-gradient-to-br from-neutral-100 via-neutral-200 to-primary/20 dark:from-night-raised dark:via-night dark:to-primary/10" />}
+    <section id="about" className={`${wrap} grid items-center gap-6 pt-16 pb-14 md:grid-cols-2 md:gap-10 md:pt-16 md:pb-20`}>
+      <div className="relative isolate mx-auto w-full max-w-xl">
+        <div aria-hidden="true" className="absolute -left-5 top-[38%] z-0 h-48 w-24 rounded-full border border-white/30 shadow-[0_0_32px_rgba(255,255,255,0.18)]" />
+        <div aria-hidden="true" className="absolute -right-5 top-[28%] z-0 h-40 w-20 rounded-full border border-primary/40 shadow-[0_0_28px_rgba(224,161,0,0.25)]" />
+        <div aria-hidden="true" className="absolute inset-4 z-0 translate-x-3 translate-y-3 rotate-3 rounded-[2rem] border border-white/10 bg-neutral-900/80 shadow-xl" />
+        <div aria-hidden="true" className="absolute left-1/2 top-0 z-20 h-1 w-3/4 -translate-x-1/2 rounded-full bg-primary-soft shadow-[0_0_28px_rgba(224,161,0,0.85)]" />
+        <motion.div initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.8, ease }} className="relative z-10 rounded-[2rem] border border-white/10 bg-neutral-950 p-3 shadow-2xl">
+          <div className="relative aspect-[4/5] overflow-hidden rounded-[1.5rem] bg-gradient-to-br from-neutral-800 via-neutral-900 to-black">
+            {settings.aboutImage ? <img src={settings.aboutImage} alt="The artist in the studio" loading="lazy" className="absolute inset-0 h-full w-full object-cover" /> : <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-br from-neutral-700 via-neutral-900 to-primary/20" />}
+            <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-black/15" />
+          </div>
+        </motion.div>
+      </div>
       <div>
-        <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">About</h2>
-        <p className="mt-5 max-w-md hyphens-auto text-justify [text-justify:inter-word] leading-7 text-neutral-600 dark:text-neutral-300 sm:leading-8">{settings.bio}</p>
-        <a href={`mailto:${settings.email}`} className={`${btnGhost} mt-6`}>{settings.email}</a>
+        <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl md:text-4xl">About</h2>
+        <p className="mt-3 max-w-prose text-sm leading-6 text-left text-neutral-600 dark:text-neutral-300 sm:mt-5 sm:text-base sm:leading-8">{settings.bio}</p>
+        <a href={`mailto:${settings.email}`} className={`${btnGhost} mt-4 sm:mt-6`}>{settings.email}</a>
       </div>
     </section>
   )
@@ -388,7 +453,8 @@ export function Contact() {
   const socials = [
     [FaInstagram, 'Instagram', settings.instagram], [FaFacebookF, 'Facebook', settings.facebook],
     [FaWhatsapp, 'WhatsApp', settings.whatsapp], [FaTwitter, 'Twitter', settings.twitter],
-  ]
+  ].filter(([, , href]) => Boolean(href && href !== '#'))
+  const mapQuery = encodeURIComponent(settings.location || '')
   const submit = async (e) => {
     e.preventDefault()
     const form = e.currentTarget
@@ -398,29 +464,90 @@ export function Contact() {
     setTimeout(() => setSent(false), 3500)
   }
   return (
-    <section id="contact" className={`${wrap} grid gap-10 pb-24 md:grid-cols-2`}>
-      <div>
-        <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">Contact us</h2>
-        <p className="mt-4 max-w-sm text-neutral-600 dark:text-neutral-300">Questions about a piece, a commission or a collaboration? Send a message or find us on social media.</p>
-        <div className="mt-6 flex gap-3">
-          {socials.map(([Icon, label, href]) => (
-            <motion.a key={label} href={href} target="_blank" rel="noreferrer" aria-label={label} whileHover={{ y: -4, scale: 1.08 }} whileTap={{ scale: 0.95 }}
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-black/15 text-lg transition hover:border-primary hover:bg-primary hover:text-primary-ink dark:border-white/20">
-              <Icon />
-            </motion.a>
-          ))}
-        </div>
+    <section id="contact" className="bg-paper pb-16 dark:bg-night">
+      <div className={`${wrap} py-14 text-center sm:py-16 lg:py-20`}>
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">Get in touch</p>
+        <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Contact Us</h2>
+        <p className="mx-auto mt-3 max-w-xl text-sm text-neutral-600 dark:text-neutral-300 sm:text-base">
+          Questions about a piece, a commission or a collaboration? We would love to hear from you.
+        </p>
       </div>
-      <form onSubmit={submit} className="space-y-3">
-        <input name="name" required placeholder="Your name" className={fieldCls} />
-        <input name="email" type="email" required placeholder="name@email.com" className={fieldCls} />
-        <textarea name="message" required rows="5" placeholder="Your message" className={fieldCls} />
-        <button disabled={sent} className={`${btnPrimary} w-full gap-2 overflow-hidden`}>
-          <span>{sent ? 'Sent' : 'Send'}</span>
-          <motion.span className="flex" animate={sent ? { x: 120, opacity: 0 } : { x: 0, opacity: 1 }} transition={{ duration: 0.8, ease }}><FiSend /></motion.span>
-        </button>
-        <p role="status" className="h-4 text-xs text-neutral-500">{sent ? 'Thank you. Your message has been sent.' : ''}</p>
-      </form>
+
+      <div className="bg-neutral-100 dark:bg-night-raised">
+        <div className={`${wrap} grid gap-10 py-10 sm:py-14 lg:grid-cols-2 lg:items-center lg:gap-16 lg:py-16`}>
+          <div className="lg:py-4">
+            <h3 className="text-2xl font-semibold tracking-tight sm:text-3xl">Get In Touch</h3>
+            <p className="mt-3 max-w-md text-sm leading-6 text-neutral-600 dark:text-neutral-300">
+              Have a question about an artwork or want to discuss a commission? Send a message and we will be in touch.
+            </p>
+
+            <div className="mt-7 space-y-4">
+              {settings.location && (
+                <a href={`https://maps.google.com/?q=${mapQuery}`} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-xl transition hover:text-primary">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-lg text-primary-ink"><FiMapPin /></span>
+                  <span>
+                    <span className="block text-xs font-semibold uppercase tracking-wide text-neutral-500">Studio location</span>
+                    <span className="mt-0.5 block text-sm font-medium">{settings.location}</span>
+                  </span>
+                </a>
+              )}
+              {settings.email && (
+                <a href={`mailto:${settings.email}`} className="flex items-center gap-3 rounded-xl transition hover:text-primary">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-lg text-primary-ink"><FiMail /></span>
+                  <span>
+                    <span className="block text-xs font-semibold uppercase tracking-wide text-neutral-500">Email</span>
+                    <span className="mt-0.5 block text-sm font-medium">{settings.email}</span>
+                  </span>
+                </a>
+              )}
+            </div>
+
+            {socials.length > 0 && (
+              <div className="mt-8">
+                <p className="text-sm font-semibold">Follow us</p>
+                <div className="mt-3 flex gap-3">
+                  {socials.map(([Icon, label, href]) => (
+                    <motion.a key={label} href={href} target="_blank" rel="noreferrer" aria-label={label} whileHover={{ y: -4, scale: 1.08 }} whileTap={{ scale: 0.95 }}
+                      className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-base text-primary-ink transition hover:bg-primary-soft">
+                      <Icon />
+                    </motion.a>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <form onSubmit={submit} className="rounded-3xl bg-paper p-6 shadow-sm dark:bg-night sm:p-8">
+            <h3 className="text-xl font-semibold tracking-tight sm:text-2xl">Send a Message</h3>
+            <div className="mt-5 space-y-3">
+              <input name="name" required placeholder="Your name" className={fieldCls} />
+              <input name="email" type="email" required placeholder="Email address" className={fieldCls} />
+              <textarea name="message" required rows="4" placeholder="Your message" className={fieldCls} />
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button disabled={sent} className={`${btnPrimary} min-w-36 gap-2 overflow-hidden`}>
+                <span>{sent ? 'Sent' : 'Send message'}</span>
+                <motion.span className="flex" animate={sent ? { x: 120, opacity: 0 } : { x: 0, opacity: 1 }} transition={{ duration: 0.8, ease }}><FiSend /></motion.span>
+              </button>
+            </div>
+            <p role="status" className="mt-2 min-h-4 text-xs text-neutral-500">{sent ? 'Thank you. Your message has been sent.' : ''}</p>
+          </form>
+        </div>
+
+        {settings.location && (
+          <div className={`${wrap} pb-10 sm:pb-14`}>
+            <div className="aspect-[16/9] overflow-hidden rounded-2xl border border-black/10 bg-neutral-200 dark:border-white/10 dark:bg-night md:aspect-[16/6] lg:aspect-[16/5]">
+              <iframe
+                title={`Map showing ${settings.location}`}
+                src={`https://maps.google.com/maps?q=${mapQuery}&z=12&output=embed`}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                className="h-full w-full border-0 grayscale-[0.35]"
+              />
+            </div>
+          </div>
+        )}
+      </div>
     </section>
   )
 }

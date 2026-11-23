@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { FiMenu, FiShoppingBag, FiX } from 'react-icons/fi'
+import { FaFacebookF, FaInstagram, FaTwitter, FaWhatsapp } from 'react-icons/fa'
 import { useStore } from './store'
 import { ThemeToggle } from './theme'
 import { CartDrawer, PaymentReturn } from './cart'
@@ -22,6 +23,10 @@ function Nav({ onCart }) {
   const [bump, setBump] = useState(0)
   const [menuOpen, setMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+  const socials = [
+    [FaInstagram, 'Instagram', settings.instagram], [FaFacebookF, 'Facebook', settings.facebook],
+    [FaWhatsapp, 'WhatsApp', settings.whatsapp], [FaTwitter, 'Twitter', settings.twitter],
+  ].filter(([, , href]) => Boolean(href))
   useEffect(() => {
     const landed = () => setBump((b) => b + 1)
     const scroll = () => setScrolled(window.scrollY > 12)
@@ -47,7 +52,7 @@ function Nav({ onCart }) {
         </a>
         <nav className="hidden items-center gap-2 lg:flex" aria-label="Main navigation">
           {links.map(([label, href]) => (
-            <a key={label} href={href} className="whitespace-nowrap rounded-full px-2 py-2 text-sm font-medium transition hover:bg-primary hover:text-primary-ink">{label}</a>
+            <a key={label} href={href} className="relative whitespace-nowrap rounded px-2 py-2 text-sm font-medium transition-all duration-300 hover:text-base hover:text-primary after:absolute after:bottom-1 after:left-2 after:right-2 after:h-0.5 after:origin-left after:scale-x-0 after:rounded-full after:bg-primary after:transition-transform after:duration-700 after:ease-out after:content-[''] hover:after:scale-x-100">{label}</a>
           ))}
         </nav>
         <div className="flex shrink-0 items-center gap-2">
@@ -76,55 +81,97 @@ function Nav({ onCart }) {
       </div>
       <AnimatePresence>
         {menuOpen && (
-          <motion.nav
-            initial={{ opacity: 0, y: -18, scaleY: 0.94 }} animate={{ opacity: 1, y: 0, scaleY: 1 }} exit={{ opacity: 0, y: -12, scaleY: 0.96 }}
-            transition={{ duration: 0.2 }}
-            style={{ transformOrigin: 'top right' }}
-            className="absolute right-2 top-full z-20 mt-2 h-[50vh] w-[calc(100vw-1rem)] max-w-sm overflow-y-auto rounded-2xl border border-black/10 bg-paper/95 shadow-xl backdrop-blur-xl dark:border-white/10 dark:bg-night/95 lg:hidden"
-            aria-label="Main navigation"
+          <motion.div
+            initial={{ opacity: 0, x: '8%' }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: '8%' }}
+            transition={{ duration: 0.24, ease: 'easeOut' }}
+            className="fixed inset-0 z-[60] flex h-[100dvh] flex-col overflow-y-auto bg-paper text-neutral-900 dark:bg-night dark:text-neutral-100 lg:hidden"
+            role="dialog" aria-modal="true" aria-label="Mobile navigation"
           >
-            <ul className="flex flex-col gap-1 p-3">
+            <div className="grid grid-cols-3 items-center px-5 pb-4 pt-5">
+              <button type="button" onClick={() => setMenuOpen(false)} aria-label="Close menu" className="flex h-11 w-11 items-center justify-center justify-self-start rounded-full text-2xl text-primary transition hover:bg-primary/10">
+                <FiX />
+              </button>
+              <a href="#top" onClick={() => setMenuOpen(false)} className="flex items-center justify-self-center whitespace-nowrap text-sm font-semibold uppercase tracking-[0.14em]">
+                <img src={logo} alt="" className="mr-1.5 h-7 w-7 object-contain" />
+                {settings.name}
+              </a>
+              <button type="button" onClick={() => { setMenuOpen(false); onCart() }} aria-label={`Open cart, ${cart.length} items`} className="relative flex h-11 w-11 items-center justify-center justify-self-end rounded-full text-xl text-primary transition hover:bg-primary/10">
+                <FiShoppingBag />
+                {cart.length > 0 && <span className="absolute right-0 top-0 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-xs font-semibold text-primary-ink">{cart.length}</span>}
+              </button>
+            </div>
+            <nav className="flex flex-1 flex-col items-center justify-center gap-3 px-5 py-8" aria-label="Main navigation">
               {links.map(([label, href]) => (
-                <li key={label}>
-                  <a href={href} onClick={() => setMenuOpen(false)} className="inline-flex w-fit max-w-full origin-left rounded-lg border border-transparent px-3 py-2.5 text-left text-sm font-medium transition duration-200 hover:scale-[1.04] hover:border-white/40 hover:bg-white/35 hover:text-primary hover:backdrop-blur-lg dark:hover:border-white/20 dark:hover:bg-white/10">{label}</a>
-                </li>
+                <a key={label} href={href} onClick={() => setMenuOpen(false)} className="relative rounded px-4 py-2 text-sm font-semibold uppercase tracking-[0.2em] transition-all duration-300 hover:text-base hover:text-primary after:absolute after:bottom-1 after:left-4 after:right-4 after:h-0.5 after:origin-left after:scale-x-0 after:rounded-full after:bg-primary after:transition-transform after:duration-700 after:ease-out after:content-[''] hover:after:scale-x-100">
+                  {label}
+                </a>
               ))}
-            </ul>
-          </motion.nav>
+            </nav>
+            <div className="flex flex-col items-center gap-6 pb-8">
+              {socials.length > 0 && (
+                <div className="flex items-center justify-center gap-6">
+                  {socials.map(([Icon, label, href]) => (
+                    <a key={label} href={href} target="_blank" rel="noreferrer" aria-label={label} className="text-xl text-neutral-700 transition hover:text-primary dark:text-neutral-200">
+                      <Icon />
+                    </a>
+                  ))}
+                </div>
+              )}
+              <ThemeToggle className="bg-paper dark:bg-night" />
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </header>
-    <AnimatePresence>
-      {menuOpen && (
-        <motion.button
-          type="button"
-          aria-label="Close navigation menu"
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          onClick={() => setMenuOpen(false)}
-          className="fixed inset-0 z-40 cursor-default bg-black/10 backdrop-blur-md dark:bg-black/20 lg:hidden"
-        />
-      )}
-    </AnimatePresence>
     </>
   )
 }
 
 function Footer() {
   const { settings } = useStore()
-  const a = 'hover:underline'
+  const socials = [
+    [FaInstagram, 'Instagram', settings.instagram], [FaFacebookF, 'Facebook', settings.facebook],
+    [FaWhatsapp, 'WhatsApp', settings.whatsapp], [FaTwitter, 'Twitter', settings.twitter],
+  ].filter(([, , href]) => Boolean(href && href !== '#'))
+  const linkClass = 'transition-colors hover:text-primary'
   return (
-    <footer className="bg-primary text-primary-ink">
-      <div className={`${wrap} flex flex-wrap items-center justify-between gap-x-8 gap-y-3 py-8 text-sm`}>
-        <span className="font-semibold">&copy; {new Date().getFullYear()} {settings.name}</span>
-        <nav className="flex flex-wrap gap-x-6 gap-y-2" aria-label="Footer">
-          <a className={a} href="#/videos">Live videos</a>
-          <a className={a} href="#/blog">Blog</a>
-          <a className={a} href="#/privacy">Privacy Policy</a>
-          <a className={a} href="#/terms">Terms of Service</a>
-        </nav>
-      </div>
-    </footer>
+    <div className="bg-neutral-200 px-4 py-10 dark:bg-night sm:px-8 sm:py-14">
+      <footer className="mx-auto max-w-6xl bg-neutral-950 text-white shadow-2xl dark:bg-black">
+        <div className="grid gap-7 px-6 py-8 sm:px-10 md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center md:gap-8">
+          <a href="#top" className="flex items-center gap-3 md:border-r md:border-white/15 md:pr-8">
+            <img src={logo} alt="" className="h-9 w-9 object-contain" />
+            <span className="font-bold tracking-wide">{settings.name}</span>
+          </a>
+
+          <div className="space-y-3">
+            <nav className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/65" aria-label="Footer">
+              <a className={linkClass} href="#about">About</a>
+              <a className={linkClass} href="#gallery">Gallery</a>
+              <a className={linkClass} href="#/blog">Blog</a>
+              <a className={linkClass} href="#contact">Contact</a>
+            </nav>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-white/45">
+              <span>&copy; {new Date().getFullYear()} {settings.name}. All rights reserved.</span>
+              <a className={linkClass} href="#/privacy">Privacy</a>
+              <a className={linkClass} href="#/terms">Terms</a>
+            </div>
+          </div>
+
+          <div className="space-y-3 text-sm text-white/65 md:min-w-56 md:text-right">
+            {socials.length > 0 && (
+              <nav className="flex items-center gap-4 md:justify-end" aria-label="Social links">
+                {socials.map(([Icon, label, href]) => (
+                  <a key={label} href={href} target="_blank" rel="noreferrer" aria-label={label} className="text-base transition-colors hover:text-primary">
+                    <Icon />
+                  </a>
+                ))}
+              </nav>
+            )}
+            {settings.email && <a className={linkClass} href={`mailto:${settings.email}`}>Support: {settings.email}</a>}
+          </div>
+        </div>
+      </footer>
+    </div>
   )
 }
 

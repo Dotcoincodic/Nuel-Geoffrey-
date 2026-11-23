@@ -6,6 +6,69 @@ const read = (k, fallback) => { try { return JSON.parse(localStorage.getItem(k))
 const Ctx = createContext(null)
 export const useStore = () => useContext(Ctx)
 
+function SiteLoadingSkeleton() {
+  const block = 'animate-pulse rounded-lg bg-neutral-200 dark:bg-white/10'
+  return (
+    <div role="status" aria-label="Loading website" className="min-h-svh overflow-hidden bg-paper text-neutral-900 dark:bg-night dark:text-neutral-100">
+      <span className="sr-only">Loading website content…</span>
+      <header className="fixed inset-x-0 top-0 z-40 border-b border-black/10 bg-paper/90 backdrop-blur dark:border-white/10 dark:bg-night/90">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3 sm:px-8">
+          <div className="flex items-center gap-2">
+            <div aria-hidden="true" className={`${block} h-9 w-9 rounded-full`} />
+            <div aria-hidden="true" className={`${block} h-4 w-28`} />
+          </div>
+          <nav aria-hidden="true" className="hidden items-center gap-4 lg:flex">
+            {[14, 12, 16, 12, 16, 14].map((width, i) => <div key={i} className={`${block} h-3`} style={{ width: `${width * 4}px` }} />)}
+          </nav>
+          <div aria-hidden="true" className="flex items-center gap-2">
+            <div className={`${block} h-10 w-10 rounded-full`} />
+            <div className={`${block} h-10 w-10 rounded-full`} />
+            <div className={`${block} h-10 w-10 rounded-full lg:hidden`} />
+          </div>
+        </div>
+      </header>
+
+      <main className="pt-16">
+        <section className="mx-auto grid min-h-[78svh] max-w-6xl items-center gap-6 px-5 py-10 sm:px-8 md:grid-cols-12 md:gap-10">
+          <div className="space-y-4 md:col-span-7">
+            <div aria-hidden="true" className={`${block} h-4 w-28`} />
+            <div aria-hidden="true" className={`${block} h-10 w-11/12 sm:h-14`} />
+            <div aria-hidden="true" className={`${block} h-10 w-3/4 sm:h-14`} />
+            <div className="space-y-2 pt-2">
+              <div aria-hidden="true" className={`${block} h-3 w-full max-w-md`} />
+              <div aria-hidden="true" className={`${block} h-3 w-4/5 max-w-sm`} />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <div aria-hidden="true" className={`${block} h-11 w-32 rounded-full bg-primary/25 dark:bg-primary/20`} />
+              <div aria-hidden="true" className={`${block} h-11 w-32 rounded-full`} />
+            </div>
+          </div>
+          <div aria-hidden="true" className={`${block} aspect-[4/3] w-full md:col-span-5 md:aspect-[4/5]`} />
+        </section>
+
+        <div aria-hidden="true" className="overflow-hidden bg-primary/70 py-3 dark:bg-primary/35">
+          <div className="mx-auto flex max-w-6xl gap-8 px-5">
+            {[24, 16, 20, 14, 22].map((width, i) => <div key={i} className="h-5 shrink-0 rounded bg-primary-ink/15" style={{ width: `${width * 4}px` }} />)}
+          </div>
+        </div>
+
+        <section className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
+          <div aria-hidden="true" className={`${block} h-8 w-48`} />
+          <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-6">
+            {[0, 1, 2].map((i) => (
+              <div key={i}>
+                <div aria-hidden="true" className={`${block} aspect-[4/5] w-full rounded-2xl`} />
+                <div aria-hidden="true" className={`${block} mt-3 h-4 w-2/3`} />
+                <div aria-hidden="true" className={`${block} mt-2 h-3 w-1/3`} />
+              </div>
+            ))}
+          </div>
+        </section>
+      </main>
+    </div>
+  )
+}
+
 // Everything is loaded from and saved to the NestJS API. Only the cart and the visitor's own
 // likes/loves stay in the browser.
 export function StoreProvider({ children }) {
@@ -44,17 +107,18 @@ export function StoreProvider({ children }) {
   useEffect(() => localStorage.setItem('artist-reacted-v1', JSON.stringify(reacted)), [reacted])
 
   if (!pub) {
-    return (
-      <div className="grid min-h-svh place-items-center p-6 text-center">
-        {err ? (
+    if (err) {
+      return (
+        <div className="grid min-h-svh place-items-center p-6 text-center">
           <div className="max-w-sm space-y-3">
             <p className="font-medium">The site could not load.</p>
             <p className="text-sm text-neutral-500">{err}</p>
             <button onClick={loadPublic} className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-ink">Try again</button>
           </div>
-        ) : <p className="text-sm text-neutral-500">Loading…</p>}
-      </div>
-    )
+        </div>
+      )
+    }
+    return <SiteLoadingSkeleton />
   }
 
   // Shows the server's error message and returns undefined when something fails.

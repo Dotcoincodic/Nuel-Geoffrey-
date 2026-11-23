@@ -10,7 +10,7 @@ export default {
         night: { DEFAULT: '#121211', raised: '#1C1C1A' },
       },
       keyframes: { marquee: { to: { transform: 'translateX(-50%)' } } },
-      animation: { marquee: 'marquee 28s linear infinite' },
+      animation: { marquee: 'marquee 18s linear infinite' },
     },
   },
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { FiTrash2 } from 'react-icons/fi'
 import { useStore, money } from './store'
 import { api } from './api'
 
@@ -80,7 +81,9 @@ export function CartDrawer({ open, onClose }) {
                           </div>
                         )}
                       </div>
-                      <button onClick={() => removeFromCart(l.key)} className="self-start text-xs text-neutral-500 hover:text-primary">Remove</button>
+                      <button type="button" onClick={() => removeFromCart(l.key)} aria-label={`Remove ${l.work.title} from cart`} title="Remove from cart" className="inline-flex h-9 w-9 shrink-0 items-center justify-center self-start rounded-full text-neutral-500 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30">
+                        <FiTrash2 aria-hidden="true" />
+                      </button>
                     </li>
                   ))}
                 </ul>

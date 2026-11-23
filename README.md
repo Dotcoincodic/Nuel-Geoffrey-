@@ -36,20 +36,20 @@ The frontend example points to `http://localhost:4000/api`. The API defaults to 
 
 ### Backend
 
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `MONGODB_URI` | Yes | MongoDB connection string. Use Atlas in production. |
-| `JWT_SECRET` | Yes | Private signing secret, at least 32 characters. |
-| `FRONTEND_URL` | Yes | Vercel site origin. Comma-separate explicit origins if needed. |
-| `CORS_ORIGIN` | No | Additional comma-separated browser origins. |
-| `PORT` | Render provides it | API listen port; defaults to 4000 locally. |
-| `PUBLIC_API_URL` | Render blueprint provides it | Public API origin used for local media URLs. |
-| `UPLOADS_DIR` | No | Local upload folder or persistent volume mount path. |
-| `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | No | Enables permanent production media uploads to Cloudinary. Keep the secret only on the backend. |
-| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | For seeding | Initial or reset admin credentials. Do not put these in Vercel. |
-| `PAYSTACK_SECRET_KEY` | No | Enables Paystack checkout and signed webhook verification. Without it, checkout uses the bank-transfer flow. |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | No | Sends order and contact emails. Without SMTP, notifications are logged by the API. |
-| `ADMIN_NOTIFY_EMAIL`, `BANK_DETAILS` | No | Order/message notifications and bank transfer instructions. |
+| Variable                                                                       | Required                     | Purpose                                                                                                      |
+| ------------------------------------------------------------------------------ | ---------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `MONGODB_URI`                                                                  | Yes                          | MongoDB connection string. Use Atlas in production.                                                          |
+| `JWT_SECRET`                                                                   | Yes                          | Private signing secret, at least 32 characters.                                                              |
+| `FRONTEND_URL`                                                                 | Yes                          | Vercel site origin. Comma-separate explicit origins if needed.                                               |
+| `CORS_ORIGIN`                                                                  | No                           | Additional comma-separated browser origins.                                                                  |
+| `PORT`                                                                         | Render provides it           | API listen port; defaults to 4000 locally.                                                                   |
+| `PUBLIC_API_URL`                                                               | Render blueprint provides it | Public API origin used for local media URLs.                                                                 |
+| `UPLOADS_DIR`                                                                  | No                           | Local upload folder or persistent volume mount path.                                                         |
+| `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`         | No                           | Enables permanent production media uploads to Cloudinary. Keep the secret only on the backend.               |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD`                                                | For seeding                  | Initial or reset admin credentials. Do not put these in Vercel.                                              |
+| `PAYSTACK_SECRET_KEY`                                                          | No                           | Enables Paystack checkout and signed webhook verification. Without it, checkout uses the bank-transfer flow. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | No                           | Sends order and contact emails. Without SMTP, notifications are logged by the API.                           |
+| `ADMIN_NOTIFY_EMAIL`, `BANK_DETAILS`                                           | No                           | Order/message notifications and bank transfer instructions.                                                  |
 
 `backend/.env.example` has placeholder values. Never copy a real `.env` file to Vercel or commit it. Backend `.env` is ignored by Git.
 
@@ -102,24 +102,24 @@ The actual Vercel and Render URLs are environment-specific and are not embedded 
 
 Interactive OpenAPI/Swagger docs are available at `/api/docs`; health is checked at `/api/health`.
 
-| Method | Path | Access | Purpose |
-| --- | --- | --- | --- |
-| `GET` | `/api/public` | Public | Load works, tracks, videos, posts, and settings. |
-| `GET` | `/api/settings` | Public | Read site settings. |
-| `PUT` | `/api/settings` | Admin bearer token | Update site settings. |
-| `GET` | `/api/works`, `/api/tracks`, `/api/videos`, `/api/posts` | Public | List content. |
-| `POST`, `PUT /:id`, `DELETE /:id` | Same content paths | Admin bearer token | Manage content. |
-| `POST` | `/api/auth/login` | Public, rate-limited | Admin login. Returns a 12-hour JWT. |
-| `POST` | `/api/auth/change-password` | Admin bearer token | Change admin password and revoke active tokens. |
-| `POST` | `/api/orders` | Public, rate-limited | Create an order; prices and availability are read from MongoDB. |
-| `GET` | `/api/orders/verify/:ref` | Public | Verify payment and return non-personal order status. |
-| `GET` | `/api/orders` | Admin bearer token | List orders. |
-| `PATCH` | `/api/orders/:id` | Admin bearer token | Update order status. |
-| `POST` | `/api/payments/webhook` | Paystack HMAC signature | Process payment success events. |
-| `POST` | `/api/messages` | Public, rate-limited | Submit a contact message or video comment. |
-| `GET`, `PATCH /:id`, `DELETE /:id` | `/api/messages` | Admin bearer token | Manage the inbox. |
-| `POST` | `/api/videos/:id/react` | Public, rate-limited | Update a like/love count. |
-| `POST` | `/api/uploads` | Admin bearer token | Upload image, video, or audio media. |
+| Method                             | Path                                                     | Access                  | Purpose                                                         |
+| ---------------------------------- | -------------------------------------------------------- | ----------------------- | --------------------------------------------------------------- |
+| `GET`                              | `/api/public`                                            | Public                  | Load works, tracks, videos, posts, and settings.                |
+| `GET`                              | `/api/settings`                                          | Public                  | Read site settings.                                             |
+| `PUT`                              | `/api/settings`                                          | Admin bearer token      | Update site settings.                                           |
+| `GET`                              | `/api/works`, `/api/tracks`, `/api/videos`, `/api/posts` | Public                  | List content.                                                   |
+| `POST`, `PUT /:id`, `DELETE /:id`  | Same content paths                                       | Admin bearer token      | Manage content.                                                 |
+| `POST`                             | `/api/auth/login`                                        | Public, rate-limited    | Admin login. Returns a 12-hour JWT.                             |
+| `POST`                             | `/api/auth/change-password`                              | Admin bearer token      | Change admin password and revoke active tokens.                 |
+| `POST`                             | `/api/orders`                                            | Public, rate-limited    | Create an order; prices and availability are read from MongoDB. |
+| `GET`                              | `/api/orders/verify/:ref`                                | Public                  | Verify payment and return non-personal order status.            |
+| `GET`                              | `/api/orders`                                            | Admin bearer token      | List orders.                                                    |
+| `PATCH`                            | `/api/orders/:id`                                        | Admin bearer token      | Update order status.                                            |
+| `POST`                             | `/api/payments/webhook`                                  | Paystack HMAC signature | Process payment success events.                                 |
+| `POST`                             | `/api/messages`                                          | Public, rate-limited    | Submit a contact message or video comment.                      |
+| `GET`, `PATCH /:id`, `DELETE /:id` | `/api/messages`                                          | Admin bearer token      | Manage the inbox.                                               |
+| `POST`                             | `/api/videos/:id/react`                                  | Public, rate-limited    | Update a like/love count.                                       |
+| `POST`                             | `/api/uploads`                                           | Admin bearer token      | Upload image, video, or audio media.                            |
 
 Admin endpoints accept `Authorization: Bearer <token>`. The Vercel client sends this token from session storage and never receives MongoDB credentials or backend secrets.
 
@@ -128,3 +128,6 @@ Order status transitions are constrained (`pending → paid/cancelled → shippe
 ## Verification
 
 From `backend/`, run `npm run build` and `npm run test:smoke`. From `frontend/`, run `npm run build`. The smoke suite uses in-memory model fakes and verifies key auth, authorization, checkout pricing/stock, Paystack signature, and message validation paths. A live MongoDB connection and actual Paystack, SMTP, Cloudinary, Render, and Vercel integration still require their external service configuration.
+
+nuel_user_1
+password: NuelGeoffrey1
