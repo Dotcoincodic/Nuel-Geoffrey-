@@ -1,12 +1,14 @@
 import { useState } from "react";
 import {
+  FiArrowRight,
+  FiEye,
+  FiEyeOff,
   FiFileText,
   FiGlobe,
   FiGrid,
   FiImage,
   FiInbox,
   FiLock,
-  FiArrowRight,
   FiMenu,
   FiMusic,
   FiPlus,
@@ -40,6 +42,28 @@ const Field = ({ label, children }) => (
     </div>
   </label>
 );
+
+function PasswordInput({ className = "", ...props }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <input
+        {...props}
+        type={show ? "text" : "password"}
+        className={`${className} !pr-10`}
+      />
+      <button
+        type="button"
+        onClick={() => setShow((v) => !v)}
+        aria-label={show ? "Hide password" : "Show password"}
+        title={show ? "Hide password" : "Show password"}
+        className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-neutral-500 transition hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
+      >
+        {show ? <FiEyeOff aria-hidden="true" className="h-4 w-4" /> : <FiEye aria-hidden="true" className="h-4 w-4" />}
+      </button>
+    </div>
+  );
+}
 
 function UploadField({ label, accept, onDone }) {
   const [busy, setBusy] = useState(false);
@@ -194,6 +218,7 @@ function Login() {
   const { login } = useStore();
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
+  const [showPw, setShowPw] = useState(false);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const submit = async (e) => {
@@ -259,14 +284,23 @@ function Login() {
             </label>
             <input
               id="admin-password"
-              type="password"
+              type={showPw ? "text" : "password"}
               autoComplete="current-password"
               required
               value={pw}
               onChange={(e) => setPw(e.target.value)}
               placeholder="Enter your password"
-              className="mt-1 w-full bg-transparent pr-12 text-sm text-white outline-none placeholder:text-white/25"
+              className="mt-1 w-full bg-transparent pr-24 text-sm text-white outline-none placeholder:text-white/25"
             />
+            <button
+              type="button"
+              onClick={() => setShowPw((v) => !v)}
+              aria-label={showPw ? "Hide password" : "Show password"}
+              title={showPw ? "Hide password" : "Show password"}
+              className="absolute right-14 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-white/60 transition hover:text-white"
+            >
+              {showPw ? <FiEyeOff aria-hidden="true" className="h-5 w-5" /> : <FiEye aria-hidden="true" className="h-5 w-5" />}
+            </button>
             <button
               type="submit"
               disabled={busy}
@@ -350,8 +384,7 @@ function PasswordAdmin() {
         </p>
       </div>
       <Field label="Current password">
-        <input
-          type="password"
+        <PasswordInput
           autoComplete="current-password"
           required
           maxLength={200}
@@ -361,8 +394,7 @@ function PasswordAdmin() {
         />
       </Field>
       <Field label="New password">
-        <input
-          type="password"
+        <PasswordInput
           autoComplete="new-password"
           required
           minLength={10}
@@ -373,8 +405,7 @@ function PasswordAdmin() {
         />
       </Field>
       <Field label="Confirm new password">
-        <input
-          type="password"
+        <PasswordInput
           autoComplete="new-password"
           required
           minLength={10}
