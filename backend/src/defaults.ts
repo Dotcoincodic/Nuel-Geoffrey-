@@ -12,4 +12,7 @@ export const DEFAULT_SETTINGS = {
   facebook: '#',
   whatsapp: '#',
   twitter: '#',
+  spotify: '',
+  appleMusic: '',
+  youtube: '',
 }

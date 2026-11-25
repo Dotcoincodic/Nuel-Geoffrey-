@@ -1,6 +1,6 @@
 import { ArgumentMetadata, BadRequestException, Injectable, PipeTransform, ValidationPipe } from '@nestjs/common'
 import {
-  ArrayMaxSize, IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, ValidateIf,
+  ArrayMaxSize, IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsOptional, IsString, IsUrl, Max, MaxLength, Min, ValidateIf,
 } from 'class-validator'
 
 export class WorkBodyDto {
@@ -18,6 +18,7 @@ export class WorkBodyDto {
 export class TrackBodyDto {
   @IsOptional() @IsString() @MaxLength(200) title?: string
   @IsOptional() @IsString() @MaxLength(200) meta?: string
+  @IsOptional() @IsString() @MaxLength(3000) description?: string
   @IsOptional() @IsString() @MaxLength(40) length?: string
   @IsOptional() @IsString() @MaxLength(2048) src?: string
   @IsOptional() @IsString() @MaxLength(2048) cover?: string
@@ -57,6 +58,9 @@ export class SettingsBodyDto {
   @IsOptional() @IsString() @MaxLength(2048) facebook?: string
   @IsOptional() @IsString() @MaxLength(2048) whatsapp?: string
   @IsOptional() @IsString() @MaxLength(2048) twitter?: string
+  @IsOptional() @ValidateIf((_object, value) => value !== '') @IsUrl({ require_protocol: true }) @MaxLength(2048) spotify?: string
+  @IsOptional() @ValidateIf((_object, value) => value !== '') @IsUrl({ require_protocol: true }) @MaxLength(2048) appleMusic?: string
+  @IsOptional() @ValidateIf((_object, value) => value !== '') @IsUrl({ require_protocol: true }) @MaxLength(2048) youtube?: string
 }
 
 export class VideoReactionDto {

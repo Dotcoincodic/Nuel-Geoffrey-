@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, useScroll, useTransform } from 'framer-motion'
-import { FaFacebookF, FaInstagram, FaTwitter, FaWhatsapp } from 'react-icons/fa'
-import { FiHeart, FiMail, FiMapPin, FiSend, FiShare2, FiShoppingCart } from 'react-icons/fi'
-import { platforms, steps } from './assets'
+import { FaApple, FaFacebookF, FaInstagram, FaSpotify, FaTwitter, FaWhatsapp, FaYoutube } from 'react-icons/fa'
+import { FiHeart, FiMail, FiMapPin, FiPause, FiPlay, FiRotateCcw, FiRotateCw, FiSend, FiShare2, FiShoppingCart } from 'react-icons/fi'
+import { steps } from './assets'
 import { useStore, money } from './store'
 import { flyToCart } from './fly'
 import { ShakePrice, btnGhost, btnPrimary, ease, fieldCls, useMediaQuery, wrap } from './ui'
 
-/* ---------- Hero: 9-image slider, sticky, fades before the gallery ---------- */
+/* ---------- Hero: 9-image slider with smooth transitions ---------- */
 const SLIDE_SECONDS = 6
 const heroCaptions = [
   'Soft morning light settles into every layer of this original work.',
@@ -25,21 +25,14 @@ export function Hero() {
   const { settings } = useStore()
   const slides = (settings.heroImages || []).filter(Boolean)
   if (slides.length === 0 && settings.heroImage) slides.push(settings.heroImage)
-  const ref = useRef(null)
   const [i, setI] = useState(0)
-  const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end end'] })
-  const imgOpacity = useTransform(scrollYProgress, [0, 0.45, 0.95], [1, 1, 0])
-  const bgOpacity = useTransform(scrollYProgress, [0, 0.45, 0.95], [0.2, 0.2, 0])
-  const imgScale = useTransform(scrollYProgress, [0, 1], [1, 0.92])
-  const txtOpacity = useTransform(scrollYProgress, [0, 0.35, 0.75], [1, 1, 0])
   const lines = settings.headline.split('|')
   const idx = slides.length ? i % slides.length : 0
   const activeSlide = slides[idx]
 
   return (
-    <section ref={ref} id="top" className="relative h-[145svh]">
-      <div className="sticky top-0 flex h-[100svh] items-start overflow-hidden bg-paper pt-24 dark:bg-night sm:items-center sm:pt-0">
-        <motion.div style={{ opacity: bgOpacity }} className="absolute inset-0" aria-hidden="true">
+    <section id="top" className="relative min-h-svh overflow-hidden bg-paper dark:bg-night">
+        <motion.div className="absolute inset-0 opacity-20" aria-hidden="true">
           <AnimatePresence initial={false}>
             {activeSlide && <motion.img
               key={`background-${idx}`} src={activeSlide} alt=""
@@ -49,12 +42,12 @@ export function Hero() {
             />}
           </AnimatePresence>
         </motion.div>
-        <div className={`${wrap} relative z-10 grid w-full items-center gap-4 md:grid-cols-12 md:gap-10`}>
-          <motion.div style={{ opacity: txtOpacity }} className="md:col-span-7">
+        <div className={`${wrap} relative z-10 grid min-h-svh w-full items-start gap-4 pb-12 pt-24 sm:items-center sm:py-20 md:grid-cols-12 md:gap-10`}>
+          <motion.div className="md:col-span-7">
             <h1 className="text-4xl font-semibold leading-[1.05] tracking-tight sm:text-6xl lg:text-7xl">
               {lines.map((l, n) => (
                 <span key={l + n} className="block overflow-hidden pb-1">
-                  <motion.span className={`block ${n === lines.length - 1 ? 'text-primary' : ''}`} initial={{ y: '110%' }} animate={{ y: 0 }} transition={{ duration: 0.9, ease, delay: 0.15 + n * 0.12 }}>
+                  <motion.span className={`block ${n === lines.length - 1 ? 'text-primary' : ''}`} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.65, ease }}>
                     {l}
                   </motion.span>
                 </span>
@@ -65,16 +58,16 @@ export function Hero() {
                 {activeSlide ? (heroCaptions[idx] || `Discover the colours and details in this featured work from ${settings.location}.`) : 'Featured artwork will appear here.'}
               </motion.p>
             </AnimatePresence>
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.95, duration: 0.6 }} className="mt-4 flex flex-wrap gap-3">
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, ease }} className="mt-4 flex flex-wrap gap-3">
               <a href="#gallery" className={`${btnPrimary} gap-2`}><FiShoppingCart aria-hidden="true" />Shop originals</a>
               <a href="#gallery" onClick={() => window.dispatchEvent(new CustomEvent('gallery-tab', { detail: 'archive' }))} className={btnGhost}>View portfolio</a>
             </motion.div>
           </motion.div>
 
-          <motion.div style={{ opacity: imgOpacity, scale: imgScale }} className="md:col-span-5">
+          <motion.div className="md:col-span-5">
             <motion.div
               className="relative h-[50svh] min-h-56 overflow-hidden rounded-2xl bg-neutral-200 dark:bg-night-raised sm:h-[60svh] md:h-[80svh]"
-              initial={{ clipPath: 'inset(100% 0 0 0)' }} animate={{ clipPath: 'inset(0% 0 0 0)' }} transition={{ duration: 1.1, ease, delay: 0.25 }}
+              initial={{ opacity: 0, scale: 1.02 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.75, ease }}
             >
               {activeSlide ? (
                 <>
@@ -109,7 +102,6 @@ export function Hero() {
             </motion.div>
           </motion.div>
         </div>
-      </div>
     </section>
   )
 }
@@ -214,6 +206,9 @@ function StackCard({ w, last, onOpen }) {
 function GalleryCard({ w, onOpen }) {
   const { cart, addToCart, settings } = useStore()
   const imageRef = useRef(null)
+  const imageFrameRef = useRef(null)
+  const { scrollYProgress: imageScrollProgress } = useScroll({ target: imageFrameRef, offset: ['start end', 'end start'] })
+  const imageParallaxY = useTransform(imageScrollProgress, [0, 1], [-18, 18])
   const [liked, setLiked] = useState(false)
   const [copied, setCopied] = useState(false)
   const isSale = w.collection === 'sale'
@@ -245,8 +240,8 @@ function GalleryCard({ w, onOpen }) {
     <article className="flex h-full flex-col rounded-3xl bg-paper-raised p-4 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl dark:bg-night-raised sm:p-5">
       <div className="relative">
         <button type="button" onClick={() => onOpen(w)} aria-label={`View ${w.title}`} className="block w-full text-left">
-          <div className="relative aspect-[4/5] max-h-[58svh] overflow-hidden rounded-2xl bg-neutral-100 dark:bg-night">
-            {w.image ? <img ref={imageRef} src={w.image} alt={w.title} loading="lazy" className="h-full w-full object-cover transition duration-700 hover:scale-105" /> : <div className="grid h-full w-full place-items-center text-sm text-neutral-500">Artwork image not added</div>}
+          <div ref={imageFrameRef} className="relative aspect-[4/5] max-h-[58svh] overflow-hidden rounded-2xl bg-neutral-100 dark:bg-night">
+            {w.image ? <motion.img ref={imageRef} style={{ y: imageParallaxY, scale: 1.08 }} whileHover={{ scale: 1.14 }} transition={{ duration: 0.7, ease }} src={w.image} alt={w.title} loading="lazy" className="h-full w-full object-cover" /> : <div className="grid h-full w-full place-items-center text-sm text-neutral-500">Artwork image not added</div>}
             {isSale && w.status && <span className={`absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-medium capitalize ${badge[w.status]}`}>{w.status}</span>}
           </div>
         </button>
@@ -307,7 +302,7 @@ export function Gallery() {
         <motion.div layout className="mt-10 grid grid-cols-2 gap-4 lg:grid-cols-3 lg:gap-6">
           <AnimatePresence mode="popLayout">
             {items.map((w, i) => (
-              <motion.div key={w.id} layout initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.94 }} transition={{ duration: 0.45, ease, delay: i * 0.05 }} className="h-full">
+              <motion.div key={w.id} layout initial={{ opacity: 0, y: 24, scale: 0.96 }} whileInView={{ opacity: 1, y: 0, scale: 1 }} viewport={{ once: true, margin: '-70px' }} exit={{ opacity: 0, scale: 0.94 }} transition={{ duration: 0.6, ease, delay: i * 0.05 }} className="h-full">
                 <GalleryCard w={w} onOpen={setOpen} />
               </motion.div>
             ))}
@@ -357,11 +352,11 @@ function Equalizer({ playing }) {
 }
 
 export function Music() {
-  const { tracks } = useStore()
-  return tracks.length ? <MusicPlayer tracks={tracks} /> : null
+  const { tracks, settings } = useStore()
+  return tracks.length ? <MusicPlayer tracks={tracks} settings={settings} /> : null
 }
 
-function MusicPlayer({ tracks }) {
+function MusicPlayer({ tracks, settings }) {
   const [idx, setIdx] = useState(0)
   const [playing, setPlaying] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -381,22 +376,52 @@ function MusicPlayer({ tracks }) {
     else if (track.src) a.play().catch(() => {})
     setPlaying(!playing)
   }
+  const skipBy = (seconds) => {
+    const a = audio.current
+    if (!a || !track.src) return
+    const nextTime = Math.max(0, a.currentTime + seconds)
+    a.currentTime = Number.isFinite(a.duration) ? Math.min(nextTime, a.duration) : nextTime
+    if (Number.isFinite(a.duration) && a.duration > 0) setProgress((a.currentTime / a.duration) * 100)
+  }
   const choose = (i) => { if (i === idx) toggle(); else { setIdx(i); setPlaying(true) } }
+  const platformLinks = [
+    { label: 'Spotify', href: settings.spotify, Icon: FaSpotify },
+    { label: 'Apple Music', href: settings.appleMusic, Icon: FaApple },
+    { label: 'YouTube', href: settings.youtube, Icon: FaYoutube },
+  ]
 
   return (
     <section id="music" className={`${wrap} py-20`}>
       <audio ref={audio} onTimeUpdate={(e) => setProgress((e.target.currentTime / (e.target.duration || 1)) * 100)} onEnded={() => setIdx((idx + 1) % tracks.length)} />
       <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">Music</h2>
-      <div className="mt-10 grid gap-8 md:grid-cols-2">
-        <motion.div key={track.id} initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, ease }} className="relative aspect-square max-w-md overflow-hidden rounded-2xl">
+      <div className="mt-8 grid items-start gap-8 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+        <div className="mx-auto w-full max-w-xs">
+        <motion.div key={track.id} initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, ease }} className="relative aspect-square w-full overflow-hidden rounded-2xl">
           {track.cover ? <motion.img src={track.cover} alt={`${track.title} cover`} className="h-full w-full object-cover" animate={{ scale: playing ? 1.06 : 1 }} transition={{ duration: 6, ease: 'linear' }} /> : <div className="grid h-full w-full place-items-center bg-neutral-100 text-sm text-neutral-500 dark:bg-night-raised">Cover image not added</div>}
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-5 text-white">
-            <p className="text-lg font-medium">{track.title}</p>
-            <p className="text-sm text-white/70">{track.meta}</p>
-            <div className="mt-3 h-1 rounded-full bg-white/25"><div className="h-full rounded-full bg-primary" style={{ width: `${progress}%` }} /></div>
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 to-transparent px-5 pb-4 pt-8">
+            <div className="h-1 rounded-full bg-white/25"><div className="h-full rounded-full bg-primary" style={{ width: `${progress}%` }} /></div>
           </div>
         </motion.div>
+        <div className="mt-4 flex items-center justify-center gap-3">
+          <button type="button" disabled={!track.src} onClick={() => skipBy(-10)} aria-label="Go back 10 seconds" title="Back 10 seconds" className="flex h-11 min-w-14 items-center justify-center gap-1 rounded-full border border-black/15 px-3 text-sm transition hover:border-primary disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/20">
+            <FiRotateCcw aria-hidden="true" /><span>10</span>
+          </button>
+          <button type="button" disabled={!track.src} onClick={toggle} aria-label={playing ? 'Pause track' : 'Play track'} className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-lg text-primary-ink transition hover:bg-primary-soft disabled:cursor-not-allowed disabled:opacity-40">
+            {playing ? <FiPause aria-hidden="true" /> : <FiPlay aria-hidden="true" className="ml-0.5" />}
+          </button>
+          <button type="button" disabled={!track.src} onClick={() => skipBy(10)} aria-label="Go forward 10 seconds" title="Forward 10 seconds" className="flex h-11 min-w-14 items-center justify-center gap-1 rounded-full border border-black/15 px-3 text-sm transition hover:border-primary disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/20">
+            <span>10</span><FiRotateCw aria-hidden="true" />
+          </button>
+        </div>
+        </div>
         <div>
+          <div className="mb-5">
+            <h3 className="text-2xl font-semibold tracking-tight">{track.title}</h3>
+            {track.meta && <p className="mt-1 text-sm text-neutral-500">{track.meta}</p>}
+            <p className="mt-3 max-w-xl text-sm leading-6 text-neutral-600 dark:text-neutral-300">
+              {track.description || 'An original track from the studio collection. Press play to listen.'}
+            </p>
+          </div>
           <ul className="divide-y divide-black/10 dark:divide-white/10">
             {tracks.map((t, i) => (
               <li key={t.id}>
@@ -411,7 +436,15 @@ function MusicPlayer({ tracks }) {
             ))}
           </ul>
           <div className="mt-6 flex flex-wrap gap-3">
-            {platforms.map((p) => <a key={p.label} href={p.href} className={btnGhost}>{p.label}</a>)}
+            {platformLinks.map(({ label, href, Icon }) => href && href !== '#' ? (
+              <a key={label} href={href} target="_blank" rel="noreferrer" aria-label={`Listen on ${label}`} className={`${btnGhost} gap-2`}>
+                <Icon aria-hidden="true" className="text-lg" />{label}
+              </a>
+            ) : (
+              <span key={label} title={`Add a ${label} link in Admin > Site`} className={`${btnGhost} cursor-default gap-2 opacity-45`}>
+                <Icon aria-hidden="true" className="text-lg" />{label}
+              </span>
+            ))}
           </div>
         </div>
       </div>

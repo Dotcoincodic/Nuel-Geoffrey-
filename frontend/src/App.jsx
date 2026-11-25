@@ -13,7 +13,7 @@ import { wrap } from './ui'
 import logo from './image/logo.PNG'
 
 const links = [
-  ['Home', '#top'], ['Gallery', '#gallery'], ['Live videos', '#/videos'], ['Blog', '#/blog'],
+  ['Home', '#top'], ['Gallery', '#gallery'], ['Videos', '#/videos'], ['Blog', '#/blog'],
   ['Commissions', '#commissions'], ['Music', '#music'], ['About', '#about'], ['Contact', '#contact'],
 ]
 

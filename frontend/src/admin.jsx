@@ -72,6 +72,99 @@ function UploadField({ label, accept, onDone }) {
   );
 }
 
+async function createVideoPoster(file) {
+  const objectUrl = URL.createObjectURL(file);
+  const video = document.createElement("video");
+  video.muted = true;
+  video.playsInline = true;
+  video.preload = "auto";
+  video.src = objectUrl;
+
+  try {
+    await new Promise((resolve, reject) => {
+      const timeout = window.setTimeout(() => reject(new Error("Could not read a frame from this video.")), 15000);
+      const cleanup = () => window.clearTimeout(timeout);
+      video.addEventListener("error", () => { cleanup(); reject(new Error("Could not read a frame from this video.")); }, { once: true });
+      video.addEventListener("loadedmetadata", () => {
+        const seekTo = Number.isFinite(video.duration) ? Math.min(0.8, video.duration * 0.15) : 0;
+        const ready = () => {
+          if (video.readyState >= 2) { cleanup(); resolve(); }
+          else video.addEventListener("loadeddata", () => { cleanup(); resolve(); }, { once: true });
+        };
+        if (seekTo > 0.05) {
+          video.addEventListener("seeked", ready, { once: true });
+          video.currentTime = seekTo;
+        } else {
+          ready();
+        }
+      }, { once: true });
+      video.load();
+    });
+
+    if (!video.videoWidth || !video.videoHeight) throw new Error("This video has no readable preview frame.");
+    const scale = Math.min(1, 1280 / video.videoWidth);
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(video.videoWidth * scale);
+    canvas.height = Math.round(video.videoHeight * scale);
+    canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.84));
+    if (!blob) throw new Error("Could not create a cover image from this video.");
+    const filename = file.name.replace(/\.[^.]+$/, "") || "video-cover";
+    return new File([blob], `${filename}-cover.jpg`, { type: "image/jpeg" });
+  } finally {
+    video.removeAttribute("src");
+    video.load();
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+function VideoUploadField({ label, onDone }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const pick = async (event) => {
+    const inputElement = event.currentTarget;
+    const file = inputElement.files[0];
+    if (!file) return;
+    setBusy(true);
+    setErr("");
+    try {
+      let posterFile = null;
+      let posterError = "";
+      try {
+        posterFile = await createVideoPoster(file);
+      } catch (error) {
+        posterError = error.message;
+      }
+
+      const src = await uploadFile(file);
+      let poster = "";
+      if (posterFile) {
+        try {
+          poster = await uploadFile(posterFile);
+        } catch {
+          posterError = "The cover image could not be saved.";
+        }
+      }
+      onDone({ src, poster });
+      if (posterError) setErr(`${posterError} You can still add a poster image below.`);
+    } catch (error) {
+      setErr(error.message);
+    } finally {
+      setBusy(false);
+      inputElement.value = "";
+    }
+  };
+
+  return (
+    <div className="text-xs text-neutral-500">
+      {label}
+      <input type="file" accept="video/mp4,video/webm" onChange={pick} disabled={busy} className="mt-1 block text-xs disabled:opacity-60" />
+      {busy && <span role="status" className="mt-1 block">Uploading video and generating cover…</span>}
+      {err && <span role="status" className="mt-1 block text-amber-700 dark:text-amber-300">{err}</span>}
+    </div>
+  );
+}
+
 function ImageField({ label, value, onChange }) {
   return (
     <Field label={label}>
@@ -622,7 +715,7 @@ function MusicAdmin() {
       <button
         className={`${btn} inline-flex items-center gap-2`}
         onClick={() =>
-          setEdit({ title: "", meta: "", length: "", src: "", cover: "" })
+          setEdit({ title: "", meta: "", length: "", src: "", cover: "", description: "" })
         }
       >
         <span aria-hidden="true" className="admin-plus-shake">
@@ -654,6 +747,18 @@ function MusicAdmin() {
               placeholder="Single, 2026"
             />
           </Field>
+          <div className="sm:col-span-2">
+            <Field label="Description">
+              <textarea
+                rows="3"
+                maxLength={3000}
+                className={input}
+                value={edit.description || ""}
+                onChange={set("description")}
+                placeholder="Tell listeners about this track"
+              />
+            </Field>
+          </div>
           <Field label="Length">
             <input
               className={input}
@@ -775,6 +880,9 @@ function SettingsAdmin() {
           await saveSettings({
             ...s,
             shippingFee: Number(s.shippingFee),
+            spotify: (s.spotify || "").trim(),
+            appleMusic: (s.appleMusic || "").trim(),
+            youtube: (s.youtube || "").trim(),
             heroImages: (s.heroImages || [])
               .map((u) => u.trim())
               .filter(Boolean)
@@ -931,6 +1039,23 @@ function SettingsAdmin() {
       <Field label="Twitter link">
         <input className={input} value={s.twitter} onChange={set("twitter")} />
       </Field>
+      <div className="space-y-3 border-t border-black/10 pt-4 dark:border-white/10 sm:col-span-2">
+        <div>
+          <h3 className="text-sm font-semibold">Music app links</h3>
+          <p className="mt-1 text-xs text-neutral-500">Add your artist, album, or channel links. These appear beside the music player.</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Field label="Spotify link">
+            <input type="url" className={input} value={s.spotify || ""} onChange={set("spotify")} placeholder="https://open.spotify.com/..." />
+          </Field>
+          <Field label="Apple Music link">
+            <input type="url" className={input} value={s.appleMusic || ""} onChange={set("appleMusic")} placeholder="https://music.apple.com/..." />
+          </Field>
+          <Field label="YouTube link">
+            <input type="url" className={input} value={s.youtube || ""} onChange={set("youtube")} placeholder="https://youtube.com/..." />
+          </Field>
+        </div>
+      </div>
       <div className="flex items-center gap-3 sm:col-span-2">
         <button className={btn}>Save settings</button>
         {saved && <span className="text-sm text-neutral-500">Saved</span>}
@@ -1002,10 +1127,9 @@ function VideosAdmin() {
                 placeholder="https://"
               />
             </Field>
-            <UploadField
-              label="Or upload a video file (mp4 or webm, up to 200 MB). The link above fills in automatically."
-              accept="video/mp4,video/webm"
-              onDone={(u) => set("src")(u)}
+            <VideoUploadField
+              label="Or upload a video file (mp4 or webm, up to 200 MB). A cover preview is generated automatically."
+              onDone={({ src, poster }) => setEdit((current) => ({ ...current, src, ...(poster ? { poster } : {}) }))}
             />
           </div>
           <div className="sm:col-span-2">

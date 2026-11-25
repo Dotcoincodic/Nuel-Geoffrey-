@@ -36,7 +36,7 @@ async function main() {
       { title: 'Crossing', collection: 'archive', medium: 'Oil on canvas', year: 2024, image: '' },
       { title: 'Salt Wind', collection: 'archive', medium: 'Acrylic', year: 2024, image: '' },
     ])
-    await add('Track', [{ title: 'Slow Burn', meta: 'Single, 2026', length: '3:42', src: '', cover: '' }])
+    await add('Track', [{ title: 'Slow Burn', meta: 'Single, 2026', description: 'A slow-building studio track shaped by warm rhythms and layered textures.', length: '3:42', src: '', cover: '' }])
     await add('Post', [{ title: 'Welcome to the new site', caption: 'Originals, prints, videos and music, all in one place.', cover: '', date: new Date().toISOString().slice(0, 10), updatedAt: null, body: 'Welcome.\n\nEdit or delete this post from the admin dashboard.' }])
   }
   await mongoose.disconnect()

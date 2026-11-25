@@ -1,14 +1,14 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { FiHeart, FiSend, FiThumbsUp } from 'react-icons/fi'
+import { FiArrowLeft, FiHeart, FiPlay, FiSend, FiThumbsUp, FiVideo } from 'react-icons/fi'
 import { useStore } from './store'
 import { PageShell, btnGhost, ease, fieldCls, fmtDate, btnPrimary } from './ui'
 
-const embedUrl = (u = '') => {
+const embedUrl = (u = '', autoplay = false) => {
   const y = u.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/)
-  if (y) return 'https://www.youtube.com/embed/' + y[1]
+  if (y) return `https://www.youtube.com/embed/${y[1]}?autoplay=${autoplay ? 1 : 0}`
   const v = u.match(/vimeo\.com\/(\d+)/)
-  return v ? 'https://player.vimeo.com/video/' + v[1] : null
+  return v ? `https://player.vimeo.com/video/${v[1]}?autoplay=${autoplay ? 1 : 0}` : null
 }
 
 /* ---------- Live videos ---------- */
@@ -25,7 +25,7 @@ function Reaction({ icon: Icon, label, count, active, onClick }) {
 function VideoCard({ v }) {
   const { react, reacted, sendMessage } = useStore()
   const [sent, setSent] = useState(false)
-  const embed = embedUrl(v.src)
+  const embed = embedUrl(v.src, true)
   const submit = async (e) => {
     e.preventDefault()
     const f = e.currentTarget
@@ -36,8 +36,8 @@ function VideoCard({ v }) {
     <motion.article initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-60px' }} transition={{ duration: 0.7, ease }}
       className="overflow-hidden rounded-2xl border border-black/10 bg-paper-raised dark:border-white/10 dark:bg-night-raised">
       <div className="aspect-video bg-black">
-        {embed ? <iframe src={embed} title={v.title} className="h-full w-full" allow="accelerometer; encrypted-media; picture-in-picture" allowFullScreen />
-          : <video src={v.src} poster={v.poster} controls playsInline preload="metadata" className="h-full w-full" />}
+        {embed ? <iframe src={embed} title={v.title} className="h-full w-full" allow="autoplay; accelerometer; encrypted-media; picture-in-picture" allowFullScreen />
+          : <video src={v.src} poster={v.poster} controls autoPlay playsInline preload="auto" className="h-full w-full" />}
       </div>
       <div className="grid gap-6 p-5 sm:p-7 md:grid-cols-5">
         <div className="md:col-span-3">
@@ -69,12 +69,59 @@ function VideoCard({ v }) {
   )
 }
 
+function VideoPreviewCard({ v, onSelect, index }) {
+  return (
+    <motion.button
+      type="button"
+      onClick={onSelect}
+      aria-label={`Play ${v.title}`}
+      initial={{ opacity: 0, y: 24, scale: 0.97 }}
+      whileInView={{ opacity: 1, y: 0, scale: 1 }}
+      viewport={{ once: true, margin: '-60px' }}
+      transition={{ duration: 0.55, ease, delay: (index % 3) * 0.08 }}
+      className="group w-full overflow-hidden rounded-2xl border border-black/10 bg-paper-raised text-left shadow-sm transition hover:-translate-y-1 hover:shadow-xl focus-visible:outline-offset-4 dark:border-white/10 dark:bg-night-raised"
+    >
+      <div className="relative aspect-video overflow-hidden bg-neutral-950">
+        {v.poster ? (
+          <img src={v.poster} alt="" loading="lazy" className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+        ) : (
+          <div aria-hidden="true" className="grid h-full w-full place-items-center bg-gradient-to-br from-neutral-800 via-neutral-950 to-black text-white/40">
+            <FiVideo className="h-10 w-10" />
+          </div>
+        )}
+        <span aria-hidden="true" className="absolute inset-0 bg-black/10 transition group-hover:bg-black/25" />
+        <span className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-primary text-xl text-primary-ink shadow-[0_0_28px_rgba(224,161,0,0.38)] transition group-hover:scale-110">
+          <FiPlay className="ml-0.5" />
+        </span>
+      </div>
+      <div className="p-4 sm:p-5">
+        <p className="text-xs text-neutral-500">Uploaded {fmtDate(v.date)}</p>
+        <h2 className="mt-1 line-clamp-2 text-lg font-semibold leading-snug transition group-hover:text-primary">{v.title}</h2>
+        {v.description && <p className="mt-2 line-clamp-2 text-sm text-neutral-600 dark:text-neutral-300">{v.description}</p>}
+      </div>
+    </motion.button>
+  )
+}
+
 export function VideosPage() {
   const { videos } = useStore()
+  const [selectedId, setSelectedId] = useState(null)
   const list = [...videos].sort((a, b) => new Date(b.date) - new Date(a.date))
+  const selectedVideo = list.find((video) => video.id === selectedId)
   return (
-    <PageShell title="Live videos" intro="Finished pieces, recorded from first mark to final signature, with the story behind each one.">
-      {list.length === 0 ? <p className="text-neutral-500">No videos yet. Check back soon.</p> : <div className="space-y-8">{list.map((v) => <VideoCard key={v.id} v={v} />)}</div>}
+    <PageShell title="Videos" intro="Finished pieces, recorded from first mark to final signature, with the story behind each one.">
+      {list.length === 0 ? <p className="text-neutral-500">No videos yet. Check back soon.</p> : selectedVideo ? (
+        <div>
+          <button type="button" onClick={() => setSelectedId(null)} className={`${btnGhost} mb-5 gap-2`}>
+            <FiArrowLeft aria-hidden="true" /> All videos
+          </button>
+          <VideoCard key={selectedVideo.id} v={selectedVideo} />
+        </div>
+      ) : (
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
+          {list.map((v, index) => <VideoPreviewCard key={v.id} v={v} index={index} onSelect={() => setSelectedId(v.id)} />)}
+        </div>
+      )}
     </PageShell>
   )
 }

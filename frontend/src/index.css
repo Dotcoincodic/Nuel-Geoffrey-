@@ -2,7 +2,7 @@
 @config "../tailwind.config.js";
 
 @layer base {
-  html { scroll-behavior: smooth; }
+  html { scroll-behavior: smooth; scroll-padding-top: 5rem; }
   body { @apply bg-paper text-neutral-900 font-sans antialiased transition-colors duration-300 dark:bg-night dark:text-neutral-100; }
   :focus-visible { @apply outline outline-2 outline-offset-2 outline-primary; }
 }
@@ -23,6 +23,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
+  html { scroll-behavior: auto; scroll-padding-top: 0; }
   .animate-marquee, .admin-plus-shake { animation: none; }
 }

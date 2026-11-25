@@ -14,6 +14,66 @@ const EXT: Record<string, string> = {
 }
 const uploadDir = resolve(process.env.UPLOADS_DIR || 'uploads')
 
+const resourceTypeFor = (mimetype: string) => (mimetype.startsWith('image/') ? 'image' : mimetype.startsWith('video/') || mimetype.startsWith('audio/') ? 'video' : 'raw')
+const CHUNK_SIZE = 20 * 1024 * 1024 // Cloudinary requires chunks for large uploads; 20 MB keeps requests reliable.
+
+async function uploadToCloudinary(file: Express.Multer.File, config: { cloudName: string; apiKey: string; apiSecret: string }) {
+  const resourceType = resourceTypeFor(file.mimetype)
+  const endpoint = `https://api.cloudinary.com/v1_1/${encodeURIComponent(config.cloudName)}/${resourceType}/upload`
+  const fileSize = (await fs.stat(file.path)).size
+  const uniqueId = randomUUID()
+
+  const sendChunk = async (buffer: Buffer, start: number, end: number) => {
+    const timestamp = Math.floor(Date.now() / 1000)
+    const signature = createHash('sha1').update(`timestamp=${timestamp}${config.apiSecret}`).digest('hex')
+    const form = new FormData()
+    form.append('file', new Blob([buffer], { type: file.mimetype }), file.filename)
+    form.append('timestamp', String(timestamp))
+    form.append('api_key', config.apiKey)
+    form.append('signature', signature)
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      body: form,
+      headers: { 'X-Unique-Upload-Id': uniqueId, 'Content-Range': `bytes ${start}-${end - 1}/${fileSize}` },
+    })
+    const result: any = await response.json().catch(() => null)
+    return { response, result }
+  }
+
+  let result: any = null
+  let response: Response | null = null
+  if (fileSize <= CHUNK_SIZE) {
+    const timestamp = Math.floor(Date.now() / 1000)
+    const signature = createHash('sha1').update(`timestamp=${timestamp}${config.apiSecret}`).digest('hex')
+    const form = new FormData()
+    form.append('file', new Blob([await fs.readFile(file.path)], { type: file.mimetype }), file.filename)
+    form.append('timestamp', String(timestamp))
+    form.append('api_key', config.apiKey)
+    form.append('signature', signature)
+    response = await fetch(endpoint, { method: 'POST', body: form })
+    result = await response.json().catch(() => null)
+  } else {
+    const handle = await fs.open(file.path, 'r')
+    try {
+      for (let start = 0; start < fileSize; start += CHUNK_SIZE) {
+        const end = Math.min(start + CHUNK_SIZE, fileSize)
+        const buffer = Buffer.alloc(end - start)
+        await handle.read(buffer, 0, buffer.length, start)
+        ;({ response, result } = await sendChunk(buffer, start, end))
+        if (!response.ok) break
+      }
+    } finally {
+      await handle.close()
+    }
+  }
+
+  if (!response?.ok || !result?.secure_url) {
+    const detail = typeof result?.error?.message === 'string' ? result.error.message : `Upload provider rejected the file (HTTP ${response?.status ?? 'unknown'})`
+    throw new BadGatewayException(detail)
+  }
+  return { url: result.secure_url }
+}
+
 @Controller('uploads')
 @ApiTags('uploads')
 export class UploadsController {
@@ -34,20 +94,16 @@ export class UploadsController {
     if (!file) throw new BadRequestException('No file received')
     const { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } = process.env
     if (CLOUDINARY_CLOUD_NAME && CLOUDINARY_API_KEY && CLOUDINARY_API_SECRET) {
-      const timestamp = Math.floor(Date.now() / 1000)
-      const signature = createHash('sha1').update(`timestamp=${timestamp}${CLOUDINARY_API_SECRET}`).digest('hex')
-      const form = new FormData()
-      form.append('file', new Blob([await fs.readFile(file.path)], { type: file.mimetype }), file.filename)
-      form.append('timestamp', String(timestamp))
-      form.append('api_key', CLOUDINARY_API_KEY)
-      form.append('signature', signature)
       try {
-        const response = await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(CLOUDINARY_CLOUD_NAME)}/auto/upload`, { method: 'POST', body: form })
-        const result: any = await response.json().catch(() => null)
-        if (!response.ok || !result?.secure_url) throw new Error('Upload provider rejected the file')
-        return { url: result.secure_url }
-      } catch {
-        throw new BadGatewayException('Could not store the uploaded file. Please try again.')
+        return await uploadToCloudinary(file, {
+          cloudName: CLOUDINARY_CLOUD_NAME,
+          apiKey: CLOUDINARY_API_KEY,
+          apiSecret: CLOUDINARY_API_SECRET,
+        })
+      } catch (error) {
+        if (error instanceof BadGatewayException) throw error
+        const detail = error instanceof Error ? error.message : 'Unknown upload error'
+        throw new BadGatewayException(`Could not store the uploaded file: ${detail}`)
       } finally {
         await fs.unlink(file.path).catch(() => {})
       }
