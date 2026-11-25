@@ -92,14 +92,16 @@ export class UploadsController {
   )
   async upload(@UploadedFile() file: Express.Multer.File) {
     if (!file) throw new BadRequestException('No file received')
-    const { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } = process.env
-    if (CLOUDINARY_CLOUD_NAME && CLOUDINARY_API_KEY && CLOUDINARY_API_SECRET) {
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME?.trim()
+    const apiKey = process.env.CLOUDINARY_API_KEY?.trim()
+    const apiSecret = process.env.CLOUDINARY_API_SECRET?.trim()
+    if (cloudName && apiKey && apiSecret) {
+      if (!/^[a-z0-9-]+$/i.test(cloudName)) {
+        await fs.unlink(file.path).catch(() => {})
+        throw new ServiceUnavailableException('CLOUDINARY_CLOUD_NAME is invalid. Use the Cloudinary cloud name from your dashboard (letters, numbers, and hyphens only).')
+      }
       try {
-        return await uploadToCloudinary(file, {
-          cloudName: CLOUDINARY_CLOUD_NAME,
-          apiKey: CLOUDINARY_API_KEY,
-          apiSecret: CLOUDINARY_API_SECRET,
-        })
+        return await uploadToCloudinary(file, { cloudName, apiKey, apiSecret })
       } catch (error) {
         if (error instanceof BadGatewayException) throw error
         const detail = error instanceof Error ? error.message : 'Unknown upload error'
@@ -108,7 +110,7 @@ export class UploadsController {
         await fs.unlink(file.path).catch(() => {})
       }
     }
-    if (CLOUDINARY_CLOUD_NAME || CLOUDINARY_API_KEY || CLOUDINARY_API_SECRET) {
+    if (cloudName || apiKey || apiSecret) {
       await fs.unlink(file.path).catch(() => {})
       throw new ServiceUnavailableException('Cloudinary upload configuration is incomplete.')
     }

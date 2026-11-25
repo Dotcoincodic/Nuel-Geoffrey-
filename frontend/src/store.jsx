@@ -181,6 +181,26 @@ function AdminLoginLoadingSkeleton() {
   )
 }
 
+function AdminDashboardLoadingSkeleton() {
+  const block = 'animate-pulse rounded-lg bg-neutral-200 dark:bg-white/10'
+  return (
+    <div role="status" aria-label="Loading admin dashboard" className="min-h-svh bg-paper text-neutral-900 dark:bg-night dark:text-neutral-100">
+      <span className="sr-only">Loading admin dashboard…</span>
+      <div className="mx-auto flex max-w-7xl gap-6 px-5 py-6 sm:px-8">
+        <aside aria-hidden="true" className="hidden w-56 shrink-0 space-y-3 lg:block">
+          <div className={`${block} h-10 w-40`} />
+          {[0, 1, 2, 3, 4, 5].map((i) => <div key={i} className={`${block} h-10 w-full rounded-xl`} />)}
+        </aside>
+        <main className="min-w-0 flex-1 space-y-4">
+          <div aria-hidden="true" className={`${block} h-10 w-56`} />
+          <div aria-hidden="true" className={`${block} h-24 w-full rounded-2xl`} />
+          <div aria-hidden="true" className={`${block} h-64 w-full rounded-2xl`} />
+        </main>
+      </div>
+    </div>
+  )
+}
+
 function SubpageLoadingSkeleton({ page }) {
   const block = 'animate-pulse rounded-lg bg-neutral-200 dark:bg-white/10'
   const title = page === 'videos' ? 'Videos' : page === 'blog' ? 'Blog' : page === 'post' ? 'Article' : page === 'privacy' ? 'Privacy policy' : page === 'terms' ? 'Terms of service' : 'Page'
@@ -294,7 +314,7 @@ function SubpageLoadingSkeleton({ page }) {
 
 function CurrentPageLoadingSkeleton() {
   const hash = window.location.hash
-  if (hash.startsWith('#/admin')) return <AdminLoginLoadingSkeleton />
+  if (hash.startsWith('#/admin')) return getToken() ? <AdminDashboardLoadingSkeleton /> : <AdminLoginLoadingSkeleton />
   if (hash === '#/videos') return <SubpageLoadingSkeleton page="videos" />
   if (hash === '#/blog') return <SubpageLoadingSkeleton page="blog" />
   if (hash.startsWith('#/blog/')) return <SubpageLoadingSkeleton page="post" />
