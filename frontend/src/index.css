@@ -22,6 +22,32 @@
   animation: admin-plus-shake 2s ease-in-out infinite;
 }
 
+.music-range::-webkit-slider-thumb {
+  width: 0.8rem;
+  height: 0.8rem;
+  appearance: none;
+  border: 0;
+  border-radius: 9999px;
+  background: #f5f5f5;
+}
+
+.music-range::-moz-range-thumb {
+  width: 0.8rem;
+  height: 0.8rem;
+  border: 0;
+  border-radius: 9999px;
+  background: #f5f5f5;
+}
+
+#music :is(h2, h3, p, span, button, a) {
+  color: #E0A100;
+}
+
+#music h2,
+#music .music-description {
+  color: #fff;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; scroll-padding-top: 0; }
   .animate-marquee, .admin-plus-shake { animation: none; }

@@ -190,6 +190,17 @@ export default function App() {
   const [hash, setHash] = useState(window.location.hash)
   const [cartOpen, setCartOpen] = useState(false)
   useEffect(() => {
+    const preventImageAction = (event) => {
+      if (event.target instanceof HTMLImageElement) event.preventDefault()
+    }
+    document.addEventListener('contextmenu', preventImageAction, true)
+    document.addEventListener('dragstart', preventImageAction, true)
+    return () => {
+      document.removeEventListener('contextmenu', preventImageAction, true)
+      document.removeEventListener('dragstart', preventImageAction, true)
+    }
+  }, [])
+  useEffect(() => {
     const r = () => setHash(window.location.hash)
     window.addEventListener('hashchange', r)
     return () => window.removeEventListener('hashchange', r)

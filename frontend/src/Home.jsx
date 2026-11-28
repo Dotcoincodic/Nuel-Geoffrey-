@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, useScroll, useTransform } from 'framer-motion'
 import { FaApple, FaFacebookF, FaInstagram, FaSpotify, FaTwitter, FaWhatsapp, FaYoutube } from 'react-icons/fa'
-import { FiHeart, FiMail, FiMapPin, FiPause, FiPlay, FiRotateCcw, FiRotateCw, FiSend, FiShare2, FiShoppingCart } from 'react-icons/fi'
+import { FiChevronDown, FiHeart, FiMail, FiMapPin, FiMoreVertical, FiMusic, FiPause, FiPlay, FiRotateCcw, FiRotateCw, FiSend, FiShare2, FiShoppingCart, FiSkipBack, FiSkipForward, FiVolume2, FiVolumeX, FiX } from 'react-icons/fi'
 import { steps } from './assets'
 import { useStore, money } from './store'
 import { flyToCart } from './fly'
@@ -345,7 +345,7 @@ function Equalizer({ playing }) {
   return (
     <span className="flex h-5 items-end gap-0.5" aria-hidden="true">
       {[0, 1, 2, 3].map((i) => (
-        <motion.span key={i} className="w-1 rounded-sm bg-primary" animate={{ height: playing ? ['20%', '100%', '40%', '80%'] : '20%' }} transition={playing ? { duration: 0.8, repeat: Infinity, repeatType: 'mirror', delay: i * 0.12 } : { duration: 0.2 }} />
+        <motion.span key={i} className="w-1 rounded-sm bg-[#20d66b]" animate={{ height: playing ? ['20%', '100%', '40%', '80%'] : '20%' }} transition={playing ? { duration: 0.8, repeat: Infinity, repeatType: 'mirror', delay: i * 0.12 } : { duration: 0.2 }} />
       ))}
     </span>
   )
@@ -360,30 +360,115 @@ function MusicPlayer({ tracks, settings }) {
   const [idx, setIdx] = useState(0)
   const [playing, setPlaying] = useState(false)
   const [progress, setProgress] = useState(0)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [duration, setDuration] = useState(0)
+  const [volume, setVolume] = useState(0.72)
+  const [hasSelection, setHasSelection] = useState(false)
+  const [fullPlayerOpen, setFullPlayerOpen] = useState(false)
+  const [menuTrackId, setMenuTrackId] = useState(null)
   const audio = useRef(null)
   const track = tracks[idx]
+  const artist = track.artist || settings.name
+
+  const parseLength = (length) => {
+    const parts = String(length || '').split(':').map(Number)
+    if (!parts.length || parts.some((part) => !Number.isFinite(part))) return 0
+    return parts.reduce((total, part) => total * 60 + part, 0)
+  }
+  const formatTime = (seconds) => {
+    if (!Number.isFinite(seconds) || seconds < 0) return '00:00'
+    const whole = Math.floor(seconds)
+    return `${String(Math.floor(whole / 60)).padStart(2, '0')}:${String(whole % 60).padStart(2, '0')}`
+  }
+  const displayDuration = duration || parseLength(track.length)
 
   useEffect(() => {
     const a = audio.current
-    a.src = track.src
+    a.pause()
+    a.removeAttribute('src')
+    if (track.src) {
+      a.src = track.src
+      a.currentTime = 0
+    }
+    a.load()
     setProgress(0)
+    setCurrentTime(0)
+    setDuration(0)
     if (playing && track.src) a.play().catch(() => setPlaying(false))
-  }, [idx])
+  }, [idx, track.src])
+
+  useEffect(() => {
+    if (audio.current) audio.current.volume = volume
+  }, [volume])
+
+  useEffect(() => {
+    if (!fullPlayerOpen) return undefined
+    const previousOverflow = document.body.style.overflow
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') setFullPlayerOpen(false)
+    }
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [fullPlayerOpen])
 
   const toggle = () => {
     const a = audio.current
-    if (playing) a.pause()
-    else if (track.src) a.play().catch(() => {})
-    setPlaying(!playing)
+    if (!track.src || !a) return
+    if (playing) {
+      a.pause()
+      setPlaying(false)
+    } else {
+      a.play().then(() => setPlaying(true)).catch(() => setPlaying(false))
+    }
   }
   const skipBy = (seconds) => {
     const a = audio.current
     if (!a || !track.src) return
     const nextTime = Math.max(0, a.currentTime + seconds)
     a.currentTime = Number.isFinite(a.duration) ? Math.min(nextTime, a.duration) : nextTime
+    setCurrentTime(a.currentTime)
     if (Number.isFinite(a.duration) && a.duration > 0) setProgress((a.currentTime / a.duration) * 100)
   }
-  const choose = (i) => { if (i === idx) toggle(); else { setIdx(i); setPlaying(true) } }
+  const openTrack = (i) => {
+    const next = tracks[i]
+    setHasSelection(true)
+    setMenuTrackId(null)
+    setFullPlayerOpen(true)
+    if (i === idx) {
+      if (next.src && !playing) {
+        audio.current?.play().then(() => setPlaying(true)).catch(() => setPlaying(false))
+      }
+      return
+    }
+    setPlaying(Boolean(next.src))
+    setIdx(i)
+  }
+  const selectTrack = (i) => {
+    setHasSelection(true)
+    if (i === idx) {
+      toggle()
+      return
+    }
+    setPlaying(Boolean(tracks[i].src))
+    setIdx(i)
+  }
+  const stepTrack = (step) => {
+    const nextIndex = (idx + step + tracks.length) % tracks.length
+    setHasSelection(true)
+    setPlaying(Boolean(tracks[nextIndex].src))
+    setIdx(nextIndex)
+  }
+  const onTimeUpdate = (event) => {
+    const a = event.currentTarget
+    const nextDuration = Number.isFinite(a.duration) ? a.duration : 0
+    setCurrentTime(a.currentTime || 0)
+    setDuration(nextDuration)
+    setProgress(nextDuration > 0 ? (a.currentTime / nextDuration) * 100 : 0)
+  }
   const platformLinks = [
     { label: 'Spotify', href: settings.spotify, Icon: FaSpotify },
     { label: 'Apple Music', href: settings.appleMusic, Icon: FaApple },
@@ -391,63 +476,168 @@ function MusicPlayer({ tracks, settings }) {
   ]
 
   return (
-    <section id="music" className={`${wrap} py-20`}>
-      <audio ref={audio} onTimeUpdate={(e) => setProgress((e.target.currentTime / (e.target.duration || 1)) * 100)} onEnded={() => setIdx((idx + 1) % tracks.length)} />
-      <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">Music</h2>
-      <div className="mt-8 grid items-start gap-8 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
-        <div className="mx-auto w-full max-w-xs">
-        <motion.div key={track.id} initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, ease }} className="relative aspect-square w-full overflow-hidden rounded-2xl">
-          {track.cover ? <motion.img src={track.cover} alt={`${track.title} cover`} className="h-full w-full object-cover" animate={{ scale: playing ? 1.06 : 1 }} transition={{ duration: 6, ease: 'linear' }} /> : <div className="grid h-full w-full place-items-center bg-neutral-100 text-sm text-neutral-500 dark:bg-night-raised">Cover image not added</div>}
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 to-transparent px-5 pb-4 pt-8">
-            <div className="h-1 rounded-full bg-white/25"><div className="h-full rounded-full bg-primary" style={{ width: `${progress}%` }} /></div>
+    <section id="music" className="relative scroll-mt-20 bg-[#101010] py-16 text-white sm:py-20">
+      <audio
+        ref={audio}
+        onTimeUpdate={onTimeUpdate}
+        onLoadedMetadata={onTimeUpdate}
+        onError={() => setPlaying(false)}
+        onEnded={() => stepTrack(1)}
+      />
+      <div className="mx-auto w-full max-w-4xl px-5 sm:px-8">
+        <div className="mb-5 flex items-end justify-between gap-4 sm:mb-7">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/45">Studio releases</p>
+            <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white sm:text-4xl">Music</h2>
           </div>
-        </motion.div>
-        <div className="mt-4 flex items-center justify-center gap-3">
-          <button type="button" disabled={!track.src} onClick={() => skipBy(-10)} aria-label="Go back 10 seconds" title="Back 10 seconds" className="flex h-11 min-w-14 items-center justify-center gap-1 rounded-full border border-black/15 px-3 text-sm transition hover:border-primary disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/20">
-            <FiRotateCcw aria-hidden="true" /><span>10</span>
-          </button>
-          <button type="button" disabled={!track.src} onClick={toggle} aria-label={playing ? 'Pause track' : 'Play track'} className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-lg text-primary-ink transition hover:bg-primary-soft disabled:cursor-not-allowed disabled:opacity-40">
-            {playing ? <FiPause aria-hidden="true" /> : <FiPlay aria-hidden="true" className="ml-0.5" />}
-          </button>
-          <button type="button" disabled={!track.src} onClick={() => skipBy(10)} aria-label="Go forward 10 seconds" title="Forward 10 seconds" className="flex h-11 min-w-14 items-center justify-center gap-1 rounded-full border border-black/15 px-3 text-sm transition hover:border-primary disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/20">
-            <span>10</span><FiRotateCw aria-hidden="true" />
-          </button>
+          <span className="pb-1 text-sm text-white/45">{tracks.length} {tracks.length === 1 ? 'track' : 'tracks'}</span>
         </div>
-        </div>
-        <div>
-          <div className="mb-5">
-            <h3 className="text-2xl font-semibold tracking-tight">{track.title}</h3>
-            {track.meta && <p className="mt-1 text-sm text-neutral-500">{track.meta}</p>}
-            <p className="mt-3 max-w-xl text-sm leading-6 text-neutral-600 dark:text-neutral-300">
-              {track.description || 'An original track from the studio collection. Press play to listen.'}
-            </p>
-          </div>
-          <ul className="divide-y divide-black/10 dark:divide-white/10">
-            {tracks.map((t, i) => (
-              <li key={t.id}>
-                <button onClick={() => choose(i)} className="flex w-full items-center gap-4 py-4 text-left transition hover:text-primary">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-full border border-black/15 text-sm dark:border-white/20">
-                    {i === idx && playing ? <Equalizer playing /> : i + 1}
+
+        <ul className="divide-y divide-white/[0.06]">
+          {tracks.map((t, i) => {
+            const selected = hasSelection && i === idx
+            return (
+              <li key={t.id} className="relative flex items-center gap-4 py-3 sm:gap-5 sm:py-4">
+                <button
+                  type="button"
+                  onClick={() => openTrack(i)}
+                  aria-label={`Open ${t.title} in the full player`}
+                  aria-pressed={selected}
+                  className="group flex min-w-0 flex-1 items-center gap-4 rounded-lg text-left outline-offset-4 sm:gap-5"
+                >
+                  <span className="relative h-14 w-14 shrink-0 overflow-hidden bg-white/10 sm:h-16 sm:w-16">
+                    {t.cover ? <img src={t.cover} alt="" loading="lazy" className="h-full w-full object-cover" /> : <span className="grid h-full w-full place-items-center text-white/45"><FiMusic aria-hidden="true" /></span>}
+                    {selected && playing && <span className="absolute inset-0 grid place-items-center bg-black/40"><Equalizer playing /></span>}
                   </span>
-                  <span className="flex-1"><span className="block font-medium">{t.title}</span><span className="text-xs text-neutral-500">{t.meta}</span></span>
-                  <span className="text-sm text-neutral-500">{t.length}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className={`block truncate text-base font-medium sm:text-lg ${selected ? 'text-[#20d66b]' : 'text-white group-hover:text-[#20d66b]'}`}>{t.title}</span>
+                    <span className="mt-0.5 block truncate text-sm text-white/60">{t.artist || settings.name}</span>
+                  </span>
+                  <span className="hidden shrink-0 text-sm text-white/45 sm:block">{t.length}</span>
                 </button>
+                <div className="relative shrink-0">
+                  <button
+                    type="button"
+                    aria-label={`More options for ${t.title}`}
+                    aria-expanded={menuTrackId === t.id}
+                    onClick={() => setMenuTrackId((id) => id === t.id ? null : t.id)}
+                    className="flex h-10 w-8 items-center justify-center rounded-full text-white/55 transition hover:bg-white/10 hover:text-white"
+                  >
+                    <FiMoreVertical aria-hidden="true" className="text-lg" />
+                  </button>
+                  <AnimatePresence>
+                    {menuTrackId === t.id && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 5, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 5, scale: 0.97 }}
+                        className="absolute right-0 top-10 z-20 w-44 overflow-hidden rounded-xl border border-white/10 bg-[#222] p-1 shadow-2xl"
+                      >
+                        <button type="button" onClick={() => openTrack(i)} className="w-full rounded-lg px-3 py-2.5 text-left text-sm text-white/90 transition hover:bg-white/10">Open full player</button>
+                        <button type="button" onClick={() => { selectTrack(i); setMenuTrackId(null) }} className="w-full rounded-lg px-3 py-2.5 text-left text-sm text-white/90 transition hover:bg-white/10">Play in mini-player</button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               </li>
-            ))}
-          </ul>
-          <div className="mt-6 flex flex-wrap gap-3">
-            {platformLinks.map(({ label, href, Icon }) => href && href !== '#' ? (
-              <a key={label} href={href} target="_blank" rel="noreferrer" aria-label={`Listen on ${label}`} className={`${btnGhost} gap-2`}>
-                <Icon aria-hidden="true" className="text-lg" />{label}
-              </a>
-            ) : (
-              <span key={label} title={`Add a ${label} link in Admin > Site`} className={`${btnGhost} cursor-default gap-2 opacity-45`}>
-                <Icon aria-hidden="true" className="text-lg" />{label}
-              </span>
-            ))}
-          </div>
+            )
+          })}
+        </ul>
+
+        <div className="mt-6 flex flex-wrap gap-2.5">
+          {platformLinks.map(({ label, href, Icon }) => href && href !== '#' ? (
+            <a key={label} href={href} target="_blank" rel="noreferrer" aria-label={`Listen on ${label}`} className="inline-flex items-center gap-2 rounded-full border border-white/15 px-3.5 py-2 text-sm text-white/75 transition hover:border-white/40 hover:text-white">
+              <Icon aria-hidden="true" className="text-base" />{label}
+            </a>
+          ) : null)}
         </div>
       </div>
+
+      <AnimatePresence>
+        {hasSelection && !fullPlayerOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 24 }}
+            className="fixed inset-x-3 bottom-4 z-[45] mx-auto max-w-3xl rounded-xl border border-white/10 bg-[#145566] p-2.5 text-white shadow-[0_12px_45px_rgba(0,0,0,0.42)] sm:bottom-5 sm:p-3"
+          >
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={() => setFullPlayerOpen(true)} aria-label={`Open full player for ${track.title}`} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                <span className="h-11 w-11 shrink-0 overflow-hidden rounded-md bg-black/20">
+                  {track.cover ? <img src={track.cover} alt="" className="h-full w-full object-cover" /> : <span className="grid h-full w-full place-items-center"><FiMusic /></span>}
+                </span>
+                <span className="min-w-0"><span className="block truncate text-sm font-semibold">{track.title}</span><span className="block truncate text-xs text-white/65">{artist}</span></span>
+              </button>
+              <button type="button" disabled={!track.src} onClick={toggle} aria-label={playing ? 'Pause track' : 'Play track'} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xl transition hover:bg-white/10 disabled:opacity-45">
+                {playing ? <FiPause aria-hidden="true" /> : <FiPlay aria-hidden="true" className="ml-0.5" />}
+              </button>
+              <button type="button" onClick={() => setFullPlayerOpen(true)} aria-label="Open full music player" className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 sm:flex">
+                <FiChevronDown aria-hidden="true" className="rotate-180 text-xl" />
+              </button>
+            </div>
+            <div className="mt-2 h-0.5 overflow-hidden rounded-full bg-white/20"><div className="h-full bg-[#22d46b] transition-[width]" style={{ width: `${progress}%` }} /></div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {fullPlayerOpen && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[70] flex min-h-[100dvh] items-center justify-center overflow-y-auto bg-[#4a3b25] px-3 py-4 text-white sm:px-6 sm:py-8"
+            role="dialog" aria-modal="true" aria-label={`Now playing ${track.title}`}
+            style={track.cover ? { backgroundImage: `linear-gradient(rgba(22,17,10,.7), rgba(12,12,12,.94)), url("${track.cover}")`, backgroundPosition: 'center', backgroundSize: 'cover' } : undefined}
+          >
+            <button type="button" onClick={() => setFullPlayerOpen(false)} aria-label="Close full player" className="fixed right-5 top-5 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-black/30 text-xl text-white/80 backdrop-blur transition hover:bg-black/55 hover:text-white sm:right-8 sm:top-8">
+              <FiX aria-hidden="true" />
+            </button>
+            <motion.div
+              initial={{ y: 18, scale: 0.98, opacity: 0 }} animate={{ y: 0, scale: 1, opacity: 1 }} exit={{ y: 18, scale: 0.98, opacity: 0 }}
+              className="my-auto w-full max-w-md rounded-[2rem] border border-white/10 bg-black/75 p-3 shadow-[0_30px_100px_rgba(0,0,0,0.62)] backdrop-blur-xl sm:p-4"
+            >
+              <div className="relative aspect-square overflow-hidden rounded-[1.5rem] bg-white/10">
+                {track.cover ? <motion.img src={track.cover} alt={`${track.title} cover`} className="h-full w-full object-cover" animate={{ scale: playing ? 1.025 : 1 }} transition={{ duration: 8, ease: 'linear' }} /> : <div className="grid h-full w-full place-items-center text-white/45"><FiMusic className="text-5xl" /></div>}
+                <div className="absolute inset-0 flex items-center justify-center gap-3 bg-black/20 opacity-100 transition-opacity sm:opacity-0 sm:hover:opacity-100 sm:focus-within:opacity-100">
+                  <button type="button" disabled={!track.src} onClick={() => skipBy(-10)} aria-label="Go back 10 seconds" className="flex h-11 min-w-14 items-center justify-center gap-1 rounded-full bg-black/60 px-3 text-sm text-white backdrop-blur disabled:opacity-40"><FiRotateCcw aria-hidden="true" /><span>10</span></button>
+                  <button type="button" disabled={!track.src} onClick={() => skipBy(10)} aria-label="Go forward 10 seconds" className="flex h-11 min-w-14 items-center justify-center gap-1 rounded-full bg-black/60 px-3 text-sm text-white backdrop-blur disabled:opacity-40"><span>10</span><FiRotateCw aria-hidden="true" /></button>
+                </div>
+              </div>
+
+              <div className="px-2 pb-2 pt-5 sm:px-3">
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-white/55">Now playing</p>
+                <div className="mt-1 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="truncate text-2xl font-semibold tracking-tight sm:text-3xl">{track.title}</h3>
+                    <p className="mt-1 truncate text-lg text-white/70">{artist}</p>
+                  </div>
+                  {track.meta && <span className="mt-1 max-w-28 shrink-0 truncate rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wide text-white/60">{track.meta}</span>}
+                </div>
+                {track.description && <p className="music-description mt-3 line-clamp-2 text-sm leading-5 text-white/75">{track.description}</p>}
+
+                <div className="mt-5">
+                  <input
+                    type="range" min="0" max={Math.max(displayDuration, 1)} step="1" value={Math.min(currentTime, displayDuration || currentTime)}
+                    onChange={(event) => { const next = Number(event.target.value); if (audio.current && track.src) audio.current.currentTime = next; setCurrentTime(next); setProgress(displayDuration ? (next / displayDuration) * 100 : 0) }}
+                    disabled={!track.src || !displayDuration}
+                    aria-label="Seek through track"
+                    className="music-range h-1.5 w-full cursor-pointer appearance-none rounded-full disabled:cursor-default disabled:opacity-50"
+                    style={{ background: `linear-gradient(to right, #f5f5f5 ${progress}%, rgba(255,255,255,.3) ${progress}%)` }}
+                  />
+                  <div className="mt-1.5 flex justify-between text-xs tabular-nums text-white/70"><span>{formatTime(currentTime)}</span><span>-{formatTime(Math.max(0, displayDuration - currentTime))}</span></div>
+                </div>
+
+                <div className="mt-4 flex items-center justify-center gap-7 sm:gap-10">
+                  <button type="button" onClick={() => stepTrack(-1)} aria-label="Previous track" className="flex h-12 w-12 items-center justify-center text-3xl text-white transition hover:scale-105 hover:text-white/75"><FiSkipBack aria-hidden="true" /></button>
+                  <button type="button" disabled={!track.src} onClick={toggle} aria-label={playing ? 'Pause track' : 'Play track'} className="flex h-16 w-16 items-center justify-center rounded-full text-5xl text-white transition hover:scale-105 disabled:opacity-40">{playing ? <FiPause aria-hidden="true" /> : <FiPlay aria-hidden="true" className="ml-1" />}</button>
+                  <button type="button" onClick={() => stepTrack(1)} aria-label="Next track" className="flex h-12 w-12 items-center justify-center text-3xl text-white transition hover:scale-105 hover:text-white/75"><FiSkipForward aria-hidden="true" /></button>
+                </div>
+
+                <div className="mt-5 flex items-center gap-3 px-1">
+                  {volume === 0 ? <FiVolumeX aria-hidden="true" className="shrink-0 text-xl text-white/70" /> : <FiVolume2 aria-hidden="true" className="shrink-0 text-xl text-white/70" />}
+                  <input type="range" min="0" max="1" step="0.01" value={volume} onChange={(event) => setVolume(Number(event.target.value))} aria-label="Volume" className="music-range h-1.5 min-w-0 flex-1 cursor-pointer appearance-none rounded-full bg-white/30" style={{ background: `linear-gradient(to right, #f5f5f5 ${volume * 100}%, rgba(255,255,255,.3) ${volume * 100}%)` }} />
+                  <button type="button" onClick={() => setFullPlayerOpen(false)} aria-label="Return to track list" className="ml-1 text-xs font-medium text-white/60 transition hover:text-white">LIST</button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   )
 }
