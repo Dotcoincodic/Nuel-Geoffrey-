@@ -98,7 +98,7 @@ export class UploadsController {
     if (cloudName && apiKey && apiSecret) {
       if (!/^[a-z0-9-]+$/i.test(cloudName)) {
         await fs.unlink(file.path).catch(() => {})
-        throw new ServiceUnavailableException('CLOUDINARY_CLOUD_NAME is invalid. Use the Cloudinary cloud name from your dashboard (letters, numbers, and hyphens only).')
+        throw new ServiceUnavailableException(`CLOUDINARY_CLOUD_NAME "${cloudName}" is invalid. Use the Cloudinary cloud name from your dashboard (letters, numbers, and hyphens only).`)
       }
       try {
         return await uploadToCloudinary(file, { cloudName, apiKey, apiSecret })
